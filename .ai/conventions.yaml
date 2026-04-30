@@ -1,0 +1,23 @@
+naming:
+  redis_keys:
+    parking_slots: "parking:{id}:slots"
+    nearby_cache: "parking:nearby:{geo_hash}"
+
+  database_tables:
+    parking: "parking"
+    booking: "booking"
+    slot: "slot"
+
+rules:
+  - redis is cache layer only, not source of truth
+  - postgres is single source of truth
+  - always validate slot in database before final booking
+
+backend_rules:
+  - controllers must be thin
+  - business logic in service layer
+  - repository only handles db queries
+
+error_handling:
+  - return consistent error response
+  - log all failures

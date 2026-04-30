@@ -1,0 +1,39 @@
+project_name: Parking Finder
+
+architecture:
+  style: monolith (modular)
+  goal: portfolio + system design showcase
+
+frontend:
+  framework: angular
+  notes:
+    - use rxjs for async data
+    - prefer resolver for prefetch data
+
+backend:
+  framework: spring boot
+  language: java
+  patterns:
+    - layered architecture
+    - service + repository pattern
+
+database:
+  primary: postgresql
+  extension: postgis
+  usage:
+    - store parking locations
+    - geo queries (nearby search)
+
+cache:
+  provider: redis
+  usage:
+    - cache parking availability
+    - atomic counter for slot booking
+    - optional pub/sub for realtime
+
+realtime:
+  method: websocket (optional)
+  fallback: polling
+
+mobile:
+  strategy: pwa first

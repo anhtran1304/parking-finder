@@ -1,0 +1,33 @@
+# Node
+node_modules/
+dist/
+
+# Angular
+.angular/
+*.log
+
+# Java
+target/
+*.class
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# Docker
+*.pid
+
+# Misc
+coverage/
