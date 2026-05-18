@@ -1,7 +1,15 @@
 package com.parkingfinder.controller;
 
+import java.time.Instant;
+
+import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,13 +20,6 @@ import com.parkingfinder.domain.BookingStatus;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.service.BookingService;
-import java.time.Instant;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(BookingController.class)
 class BookingControllerTest {
@@ -42,7 +43,7 @@ class BookingControllerTest {
             "user-1",
             request.startTime(),
             request.endTime(),
-            BookingStatus.CONFIRMED,
+            BookingStatus.ACTIVE,
             Instant.now());
 
     when(bookingService.createBooking(any(CreateBookingRequest.class))).thenReturn(response);
@@ -54,7 +55,7 @@ class BookingControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(7))
-        .andExpect(jsonPath("$.status").value("CONFIRMED"));
+        .andExpect(jsonPath("$.status").value("ACTIVE"));
   }
 
   @Test
@@ -66,7 +67,7 @@ class BookingControllerTest {
             "user-9",
             Instant.now().plusSeconds(300),
             Instant.now().plusSeconds(1200),
-            BookingStatus.CONFIRMED,
+            BookingStatus.ACTIVE,
             Instant.now());
 
     when(bookingService.getById(9L)).thenReturn(response);
