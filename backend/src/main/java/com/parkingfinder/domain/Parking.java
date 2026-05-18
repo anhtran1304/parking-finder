@@ -26,7 +26,10 @@ public class Parking {
   @Column(nullable = false)
   private String name;
 
-  @Column(nullable = false, columnDefinition = "geometry(Point,4326)")
+  @Column
+  private String address;
+
+  @Column(nullable = false, columnDefinition = "geography(Point,4326)")
   private Point location;
 
   @Column(name = "total_slots", nullable = false)

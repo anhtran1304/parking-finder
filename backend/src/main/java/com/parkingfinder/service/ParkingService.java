@@ -10,6 +10,11 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.parkingfinder.dto.CreateParkingRequest;
+import java.time.Instant;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +22,7 @@ public class ParkingService {
 
   private final ParkingRepository parkingRepository;
   private final ParkingCacheService parkingCacheService;
+  private final SlotCounterService slotCounterService;
 
   @Transactional(readOnly = true)
   public List<NearbyParkingResponse> getNearby(double lat, double lng, double radiusMeters) {
@@ -49,6 +55,28 @@ public class ParkingService {
             });
   }
 
+  @Transactional
+  public ParkingDetailResponse createParking(CreateParkingRequest request) {
+    GeometryFactory geometryFactory = new GeometryFactory();
+    Point location = geometryFactory.createPoint(new Coordinate(request.lng(), request.lat()));
+    location.setSRID(4326);
+
+    Parking parking = new Parking();
+    parking.setName(request.name());
+    parking.setAddress(request.address());
+    parking.setLocation(location);
+    parking.setTotalSlots(request.totalSlots());
+    parking.setAvailableSlots(request.totalSlots());
+    parking.setUpdatedAt(Instant.now());
+
+    Parking saved = parkingRepository.save(parking);
+
+    slotCounterService.syncSlot(saved.getId(), saved.getAvailableSlots());
+    parkingCacheService.evictParkingDetail(saved.getId());
+ 
+    return toDetailResponse(saved);
+  }
+
   private NearbyParkingResponse toNearbyResponse(NearbyParkingProjection projection) {
     return new NearbyParkingResponse(
         projection.getId(),
@@ -64,6 +92,7 @@ public class ParkingService {
     return new ParkingDetailResponse(
         parking.getId(),
         parking.getName(),
+        parking.getAddress(),
         parking.getTotalSlots(),
         parking.getAvailableSlots(),
         parking.getLocation().getY(),

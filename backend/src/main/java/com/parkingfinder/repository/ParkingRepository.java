@@ -16,14 +16,14 @@ public interface ParkingRepository extends JpaRepository<Parking, Long> {
           SELECT p.id,
                  p.name,
                  p.available_slots AS availableSlots,
-                 ST_Y(p.location) AS lat,
-                 ST_X(p.location) AS lng,
-                 ST_Distance(p.location::geography,
-                             ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography) AS distanceMeters,
+               ST_Y(p.location::geometry) AS lat,
+               ST_X(p.location::geometry) AS lng,
+               ST_Distance(p.location,
+                     ST_MakePoint(:lng, :lat)::geography) AS distanceMeters,
                  p.updated_at AS updatedAt
           FROM parking p
-          WHERE ST_DWithin(p.location::geography,
-                           ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography,
+           WHERE ST_DWithin(p.location,
+                      ST_MakePoint(:lng, :lat)::geography,
                            :radiusMeters)
           ORDER BY distanceMeters ASC
           """,
