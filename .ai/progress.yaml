@@ -1,0 +1,78 @@
+version: 2
+last_updated: 2026-05-18
+current_phase: phase_2_booking
+
+phases:
+  phase_1_core_search:
+    status: in_progress
+    backend_tasks:
+      - id: setup_docker
+        status: done
+      - id: design_database
+        status: done
+      - id: implement_parking_entity
+        status: done
+      - id: nearby_search_api
+        status: done
+    frontend_tasks:
+      - id: setup_angular
+        status: done
+      - id: map_view_basic
+        status: done
+      - id: call_nearby_api
+        status: done
+      - id: render_parking_markers
+        status: pending
+
+  phase_2_booking:
+    status: in_progress
+    backend_tasks:
+      - id: implement_booking_naive
+        status: done
+      - id: reproduce_race_condition
+        status: done
+      - id: implement_redis_atomic_booking
+        status: pending
+    frontend_tasks:
+      - id: parking_detail_page
+        status: pending
+      - id: booking_button
+        status: pending
+      - id: booking_result_feedback
+        status: pending
+
+  phase_3_realtime:
+    status: pending
+    backend_tasks:
+      - id: websocket_setup
+        status: pending
+      - id: redis_pubsub
+        status: pending
+    frontend_tasks:
+      - id: websocket_client
+        status: pending
+      - id: realtime_slot_update_ui
+        status: pending
+
+  phase_4_ux:
+    status: pending
+    backend_tasks:
+      - id: cache_optimization
+        status: pending
+      - id: error_contract_hardening
+        status: pending
+    frontend_tasks:
+      - id: loading_state
+        status: pending
+      - id: error_state
+        status: pending
+      - id: last_updated_label
+        status: pending
+      - id: highlight_almost_full
+        status: pending
+
+notes:
+  - "Balanced backend/frontend progress tracking is now enabled per phase."
+  - "Portfolio sequencing kept: naive booking first, then Redis atomic fix."
+  - "Race condition was reproduced via Postman and a basic script with 10 simultaneous booking requests."
+  - "Some frontend tasks were intentionally reopened for a second implementation pass."
