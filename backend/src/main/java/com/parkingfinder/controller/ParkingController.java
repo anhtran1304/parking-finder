@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.parkingfinder.dto.CreateParkingRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @RestController
 @RequestMapping("/parkings")
@@ -33,5 +39,11 @@ public class ParkingController {
   @GetMapping("/{id}")
   public ParkingDetailResponse getById(@PathVariable Long id) {
     return parkingService.getById(id);
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public ParkingDetailResponse createParking(@Valid @RequestBody CreateParkingRequest request) {
+    return parkingService.createParking(request);
   }
 }
