@@ -1,0 +1,23 @@
+// ═══════════════════════════════════════════════════════════════
+// MAIN STYLESHEET -- ParkingFinder
+// Entry point for all global styles
+// ═══════════════════════════════════════════════════════════════
+
+// Tailwind must be first
+@use "tailwindcss";
+
+// --- Design Tokens (Tailwind @theme) ---
+@import "base/theme";
+
+// --- Base Layer ---
+@import "base/reset";
+@import "base/globals";
+@import "base/animations";
+
+// --- Global Component Styles ---
+// (Only styles that MUST be global -- Leaflet renders outside Angular)
+@import "components/leaflet";
+@import "components/markers";
+
+// --- Utilities ---
+@import "utilities/scrollbar";

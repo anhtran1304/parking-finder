@@ -1,20 +1,18 @@
 import { Routes } from '@angular/router';
-import { ParkingMapResolver } from './core/resolvers/parking-map.resolver';
 import { ParkingDetailComponent } from './features/parking/parking-detail.component';
-import { ParkingMapComponent } from './features/parking/parking-map.component';
+import { ShellComponent } from './layout/shell.component';
 
 export const routes: Routes = [
   {
     path: '',
-    component: ParkingMapComponent,
-    resolve: { nearby: ParkingMapResolver }
+    component: ShellComponent,
   },
   {
     path: 'parkings/:id',
-    component: ParkingDetailComponent
+    component: ParkingDetailComponent,
   },
   {
     path: '**',
-    redirectTo: ''
-  }
+    redirectTo: '',
+  },
 ];

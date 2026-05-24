@@ -1,10 +1,10 @@
 version: 2
-last_updated: 2026-05-18
+last_updated: 2026-05-24
 current_phase: phase_2_booking
 
 phases:
   phase_1_core_search:
-    status: in_progress
+    status: done
     backend_tasks:
       - id: setup_docker
         status: done
@@ -14,6 +14,9 @@ phases:
         status: done
       - id: nearby_search_api
         status: done
+      - id: backend_api_fields_fix
+        status: done
+        note: "Added totalSlots, hourlyRate, parkingType, amenity flags to SQL query + DTO pipeline"
     frontend_tasks:
       - id: setup_angular
         status: done
@@ -22,7 +25,19 @@ phases:
       - id: call_nearby_api
         status: done
       - id: render_parking_markers
-        status: pending
+        status: done
+      - id: style_architecture
+        status: done
+        note: "Tailwind v4 @theme, partials (base/components/utilities), angular.json updated"
+      - id: icon_system
+        status: done
+        note: "@lucide/angular, IconComponent, 24-icon registry, replaces all SVGs"
+      - id: marker_transform_fix
+        status: done
+        note: "Wrapper+child DivIcon model -- Leaflet translate3d separated from CSS scale/rotate"
+      - id: parking_card_redesign
+        status: done
+        note: "Vertical layout: title, meta row (distance+price), status row with dot"
 
   phase_2_booking:
     status: in_progress
@@ -75,4 +90,4 @@ notes:
   - "Balanced backend/frontend progress tracking is now enabled per phase."
   - "Portfolio sequencing kept: naive booking first, then Redis atomic fix."
   - "Race condition was reproduced via Postman and a basic script with 10 simultaneous booking requests."
-  - "Some frontend tasks were intentionally reopened for a second implementation pass."
+  - "Phase 1 frontend fully complete including UI polish pass (cards, icons, markers, style arch)."

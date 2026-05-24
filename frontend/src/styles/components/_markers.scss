@@ -1,0 +1,106 @@
+// ═══════════════════════════════════════════════════════════════
+// MAP MARKERS
+// Global styles -- Leaflet renders outside Angular encapsulation
+//
+// Structure:
+// .leaflet-marker-icon.map-marker-wrapper  <- Leaflet controls translate3d
+//   .map-marker                            <- Our visual transform target
+//     .map-marker__inner
+// ═══════════════════════════════════════════════════════════════
+
+/* Reset Leaflet default icon surface so custom marker visuals are clean. */
+.leaflet-marker-icon {
+  background: transparent !important;
+  border: none !important;
+  overflow: visible !important;
+}
+
+.map-marker-wrapper {
+  position: relative;
+  cursor: pointer;
+}
+
+.map-marker {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  background: #ffffff;
+  border-radius: 50% 50% 50% 0;
+  rotate: -45deg;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.18),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    scale 180ms var(--ease-out-expo),
+    box-shadow 180ms var(--ease-out-expo);
+}
+
+.map-marker-wrapper:hover .map-marker {
+  scale: 1.08;
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.22),
+    0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.map-marker__inner {
+  width: 22px;
+  height: 22px;
+  background: var(--color-primary-base);
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  rotate: 45deg;
+  transition: background 180ms ease;
+}
+
+.map-marker__inner::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #ffffff;
+  border-radius: 50%;
+}
+
+// --- Status Variants ---
+// Available state uses default --color-primary-base (brand blue)
+
+.map-marker-wrapper--limited .map-marker__inner {
+  background: var(--color-parking-limited);
+}
+
+.map-marker-wrapper--full .map-marker__inner {
+  background: var(--color-parking-full);
+}
+
+// --- Interactive States ---
+.map-marker-wrapper--selected .map-marker {
+  scale: 1.12;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.22),
+    0 4px 10px rgba(0, 0, 0, 0.12);
+  animation: markerPulse 2s ease-in-out infinite;
+}
+
+.map-marker-wrapper--selected:hover .map-marker {
+  scale: 1.12;
+}
+
+.map-marker-wrapper--hovered .map-marker {
+  scale: 1.08;
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    0 3px 6px rgba(0, 0, 0, 0.1);
+}
+
+.map-marker-wrapper--selected {
+  z-index: var(--z-marker-selected) !important;
+}
+
+.map-marker-wrapper--hovered {
+  z-index: var(--z-marker-hovered) !important;
+}

@@ -1,0 +1,54 @@
+// ═══════════════════════════════════════════════════════════════
+// LEAFLET MAP OVERRIDES
+// Hide default chrome for immersive map experience
+// ═══════════════════════════════════════════════════════════════
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(4px);
+  border-radius: 4px !important;
+  padding: 2px 6px !important;
+  margin: 8px !important;
+}
+
+// --- Zoom Control Styling ---
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  border-radius: var(--radius-md) !important;
+  overflow: hidden;
+  transition: box-shadow 180ms ease;
+}
+
+.leaflet-control-zoom:hover {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.14),
+    0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.leaflet-control-zoom a {
+  background: var(--glass-bg-solid) !important;
+  backdrop-filter: blur(12px);
+  color: var(--color-text-primary) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--color-border-subtle) !important;
+  width: 40px !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  font-size: 18px !important;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.leaflet-control-zoom a:last-child {
+  border-bottom: none !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--color-bg-subtle) !important;
+  color: var(--color-primary-base) !important;
+}

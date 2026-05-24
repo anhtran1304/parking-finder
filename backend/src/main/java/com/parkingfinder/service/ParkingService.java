@@ -1,20 +1,24 @@
 package com.parkingfinder.service;
 
+import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.parkingfinder.domain.Parking;
+import com.parkingfinder.dto.CreateParkingRequest;
 import com.parkingfinder.dto.NearbyParkingResponse;
 import com.parkingfinder.dto.ParkingDetailResponse;
 import com.parkingfinder.exception.ResourceNotFoundException;
 import com.parkingfinder.repository.NearbyParkingProjection;
 import com.parkingfinder.repository.ParkingRepository;
-import java.util.List;
+
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.parkingfinder.dto.CreateParkingRequest;
-import java.time.Instant;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
 
 @Service
 @RequiredArgsConstructor
@@ -81,11 +85,19 @@ public class ParkingService {
     return new NearbyParkingResponse(
         projection.getId(),
         projection.getName(),
-        projection.getAvailableSlots(),
+        Objects.requireNonNullElse(projection.getTotalSlots(), 0),
+        Objects.requireNonNullElse(projection.getAvailableSlots(), 0),
         projection.getLat(),
         projection.getLng(),
         Math.round(projection.getDistanceMeters()),
-        projection.getUpdatedAt());
+        projection.getUpdatedAt(),
+        projection.getHourlyRate(),
+        projection.getParkingType(),
+        projection.getHasEvCharging(),
+        projection.getHasSecurity(),
+        projection.getHasRoof(),
+        projection.getRating(),
+        projection.getReviewCount());
   }
 
   ParkingDetailResponse toDetailResponse(Parking parking) {

@@ -1,12 +1,14 @@
 package com.parkingfinder.repository;
 
-import com.parkingfinder.domain.Parking;
 import java.time.Instant;
 import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.parkingfinder.domain.Parking;
 
 public interface ParkingRepository extends JpaRepository<Parking, Long> {
 
@@ -15,16 +17,24 @@ public interface ParkingRepository extends JpaRepository<Parking, Long> {
           """
           SELECT p.id,
                  p.name,
+                 p.total_slots     AS totalSlots,
                  p.available_slots AS availableSlots,
-               ST_Y(p.location::geometry) AS lat,
-               ST_X(p.location::geometry) AS lng,
-               ST_Distance(p.location,
-                     ST_MakePoint(:lng, :lat)::geography) AS distanceMeters,
-                 p.updated_at AS updatedAt
+                 ST_Y(p.location::geometry) AS lat,
+                 ST_X(p.location::geometry) AS lng,
+                 ST_Distance(p.location,
+                       ST_MakePoint(:lng, :lat)::geography) AS distanceMeters,
+                 p.updated_at      AS updatedAt,
+                 p.hourly_rate     AS hourlyRate,
+                 p.parking_type    AS parkingType,
+                 p.has_ev_charging AS hasEvCharging,
+                 p.has_security    AS hasSecurity,
+                 p.has_roof        AS hasRoof,
+                 p.rating,
+                 p.review_count    AS reviewCount
           FROM parking p
-           WHERE ST_DWithin(p.location,
-                      ST_MakePoint(:lng, :lat)::geography,
-                           :radiusMeters)
+          WHERE ST_DWithin(p.location,
+                     ST_MakePoint(:lng, :lat)::geography,
+                          :radiusMeters)
           ORDER BY distanceMeters ASC
           """,
       nativeQuery = true)
