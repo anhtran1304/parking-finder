@@ -50,7 +50,23 @@ phases:
         status: pending
     frontend_tasks:
       - id: parking_detail_page
-        status: pending
+        status: in_progress
+        note: "Detail panel component complete with sticky header/footer + scrollable body"
+      - id: detail_panel_sticky_footer
+        status: done
+        note: "3-zone layout: pinned header, scrollable body, pinned actions footer with 2 CTA buttons"
+      - id: detail_panel_amenities
+        status: done
+        note: "9 parkingType-keyed amenity sets (2-6 items), data-driven *ngFor, dynamic aboutText"
+      - id: detail_panel_image_section
+        status: done
+        note: "Media promoted to pinned zone, clamp(180px,28vh,260px) height, opacity-fade carousel, gradient overlay, zoom-on-hover"
+      - id: zoom_control_repositioning
+        status: done
+        note: "Leaflet topright position, responsive offsets (380/340/12px), upgraded visual styling"
+      - id: rich_seed_data
+        status: done
+        note: "V3 migration: 10 diverse HCMC parkings, hourlyRate/parkingType/amenity flag columns"
       - id: booking_button
         status: pending
       - id: booking_result_feedback
@@ -91,3 +107,4 @@ notes:
   - "Portfolio sequencing kept: naive booking first, then Redis atomic fix."
   - "Race condition was reproduced via Postman and a basic script with 10 simultaneous booking requests."
   - "Phase 1 frontend fully complete including UI polish pass (cards, icons, markers, style arch)."
+  - "Detail panel (phase 2) has full layout + amenities + media section. Booking wiring still pending."

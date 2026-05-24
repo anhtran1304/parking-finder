@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal, computed } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, of, tap } from 'rxjs';
 import { ParkingApiService } from '../core/services/parking-api.service';
 import { ParkingMapComponent } from '../features/parking/parking-map.component';
 import { NearbyParkingResponse } from '../models/parking.model';
+import { DetailPanelComponent } from './detail-panel.component';
 import { SidebarComponent } from './sidebar.component';
 import { environment } from '../../environments/environment';
 
@@ -12,7 +14,7 @@ export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, SidebarComponent, ParkingMapComponent],
+  imports: [CommonModule, SidebarComponent, ParkingMapComponent, DetailPanelComponent],
   template: `
     <div class="shell">
       <app-parking-map
@@ -39,6 +41,15 @@ export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
         (searchChange)="onSearch($event)"
         (filterToggled)="onFilterToggle($event)"
       ></app-sidebar>
+
+      <app-detail-panel
+        *ngIf="selectedParking()"
+        class="shell__detail"
+        [parking]="selectedParking()"
+        (reserveClicked)="onReserve($event)"
+        (navigateClicked)="onNavigate($event)"
+        (closeClicked)="onDeselect()"
+      ></app-detail-panel>
     </div>
   `,
   styles: [
@@ -79,9 +90,23 @@ export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
         animation: panelSlideIn 0.4s var(--ease-out-expo) both;
       }
 
+      .shell__detail {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 340px;
+        max-height: calc(100vh - 40px);
+        z-index: 10;
+        animation: panelSlideInRight 0.35s var(--ease-out-expo) both;
+      }
+
       @media (max-width: 1279px) {
         .shell__sidebar {
           width: 320px;
+        }
+
+        .shell__detail {
+          width: 300px;
         }
       }
 
@@ -93,6 +118,10 @@ export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
           bottom: 12px;
           width: auto;
           max-height: 45vh;
+        }
+
+        .shell__detail {
+          display: none;
         }
       }
     `,
@@ -117,7 +146,10 @@ export class ShellComponent implements OnInit {
     });
   });
 
-  constructor(private readonly parkingApiService: ParkingApiService) {}
+  constructor(
+    private readonly parkingApiService: ParkingApiService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     const center = environment.defaultMapCenter;
@@ -165,5 +197,16 @@ export class ShellComponent implements OnInit {
 
   onSearch(query: string): void {
     // Search/filter logic will be added later.
+  }
+
+  onReserve(parking: NearbyParkingResponse): void {
+    this.router.navigate(['/parkings', parking.id]);
+  }
+
+  onNavigate(parking: NearbyParkingResponse): void {
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${parking.lat},${parking.lng}`,
+      '_blank'
+    );
   }
 }
