@@ -19,8 +19,8 @@
             "tsConfig": "tsconfig.app.json",
             "assets": ["src/assets"],
             "styles": [
-              "src/styles.scss",
-              "node_modules/leaflet/dist/leaflet.css"
+              "node_modules/leaflet/dist/leaflet.css",
+              "src/styles/main.scss"
             ],
             "scripts": []
           },
@@ -59,8 +59,8 @@
             "tsConfig": "tsconfig.spec.json",
             "assets": ["src/assets"],
             "styles": [
-              "src/styles.scss",
-              "node_modules/leaflet/dist/leaflet.css"
+              "node_modules/leaflet/dist/leaflet.css",
+              "src/styles/main.scss"
             ],
             "scripts": []
           }
