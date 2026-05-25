@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parkingfinder.domain.BookingStatus;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
+import com.parkingfinder.exception.BookingReservationUnavailableException;
 import com.parkingfinder.service.BookingService;
 
 @WebMvcTest(BookingController.class)
@@ -56,6 +57,28 @@ class BookingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(7))
         .andExpect(jsonPath("$.status").value("ACTIVE"));
+  }
+
+  @Test
+  void createBooking_shouldReturnServiceUnavailable_whenReservationSystemUnavailable()
+      throws Exception {
+    CreateBookingRequest request =
+        new CreateBookingRequest(
+            1L, "user-1", Instant.now().plusSeconds(300), Instant.now().plusSeconds(900));
+
+    when(bookingService.createBooking(any(CreateBookingRequest.class)))
+        .thenThrow(
+            new BookingReservationUnavailableException(
+                "Booking reservation system unavailable", new RuntimeException("redis down")));
+
+    mockMvc
+        .perform(
+            post("/bookings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isServiceUnavailable())
+        .andExpect(jsonPath("$.code").value("BOOKING_RESERVATION_UNAVAILABLE"))
+        .andExpect(jsonPath("$.message").value("Booking reservation system unavailable"));
   }
 
   @Test
