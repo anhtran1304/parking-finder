@@ -203,8 +203,13 @@ const ABOUT_MAP: Record<string, string> = {
           <app-icon name="navigation" [size]="16" [strokeWidth]="2" />
           Directions
         </app-button>
-        <app-button variant="primary" (click)="onReserveClicked()">
-          Reserve Spot
+        <app-button
+          variant="primary"
+          [disabled]="reserveDisabled"
+          [loading]="reserveLoading"
+          (click)="onReserveClicked()"
+        >
+          {{ reserveLabel }}
         </app-button>
       </div>
     </aside>
@@ -628,6 +633,9 @@ const ABOUT_MAP: Record<string, string> = {
 export class DetailPanelComponent {
   @Input() parking: NearbyParkingResponse | null = null;
   @Input() images: string[] = [];
+  @Input() reserveDisabled = false;
+  @Input() reserveLoading = false;
+  @Input() reserveLabel = 'Reserve Spot';
   @Output() reserveClicked = new EventEmitter<NearbyParkingResponse>();
   @Output() navigateClicked = new EventEmitter<NearbyParkingResponse>();
   @Output() closeClicked = new EventEmitter<void>();
@@ -654,7 +662,7 @@ export class DetailPanelComponent {
   }
 
   onReserveClicked(): void {
-    if (this.parking) {
+    if (this.parking && !this.reserveDisabled && !this.reserveLoading) {
       this.reserveClicked.emit(this.parking);
     }
   }
