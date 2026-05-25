@@ -47,7 +47,8 @@ phases:
       - id: reproduce_race_condition
         status: done
       - id: implement_redis_atomic_booking
-        status: pending
+        status: done
+        note: "Booking now uses Redis Lua atomic reservation before DB insert and rolls back Redis on DB save failure"
     frontend_tasks:
       - id: parking_detail_page
         status: in_progress
@@ -106,5 +107,6 @@ notes:
   - "Balanced backend/frontend progress tracking is now enabled per phase."
   - "Portfolio sequencing kept: naive booking first, then Redis atomic fix."
   - "Race condition was reproduced via Postman and a basic script with 10 simultaneous booking requests."
+  - "Redis atomic booking gate is enabled with fail-closed behavior when Redis is unavailable."
   - "Phase 1 frontend fully complete including UI polish pass (cards, icons, markers, style arch)."
   - "Detail panel (phase 2) has full layout + amenities + media section. Booking wiring still pending."

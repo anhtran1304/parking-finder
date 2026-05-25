@@ -1,5 +1,6 @@
 package com.parkingfinder.controller;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -52,7 +53,21 @@ class ParkingControllerTest {
         .thenReturn(
             List.of(
                 new NearbyParkingResponse(
-                    1L, "Parking A", 20, 10.7769, 106.7010, 120L, Instant.now())));
+                    1L,
+                    "Parking A",
+                    50,
+                    20,
+                    10.7769,
+                    106.7010,
+                    120L,
+                    Instant.now(),
+                    BigDecimal.valueOf(2.50),
+                    "garage",
+                    false,
+                    true,
+                    true,
+                    BigDecimal.valueOf(4.5),
+                    128)));
 
     mockMvc
         .perform(
@@ -63,7 +78,11 @@ class ParkingControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(1))
         .andExpect(jsonPath("$[0].name").value("Parking A"))
-        .andExpect(jsonPath("$[0].availableSlots").value(20));
+        .andExpect(jsonPath("$[0].totalSlots").value(50))
+        .andExpect(jsonPath("$[0].availableSlots").value(20))
+        .andExpect(jsonPath("$[0].hourlyRate").value(2.5))
+        .andExpect(jsonPath("$[0].parkingType").value("garage"))
+        .andExpect(jsonPath("$[0].hasSecurity").value(true));
   }
 
   @Test

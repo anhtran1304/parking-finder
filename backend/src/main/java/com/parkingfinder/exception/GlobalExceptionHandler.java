@@ -30,6 +30,16 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.CONFLICT, "NO_AVAILABLE_SLOT", ex.getMessage(), request.getRequestURI());
   }
 
+  @ExceptionHandler(BookingReservationUnavailableException.class)
+  public ResponseEntity<ApiErrorResponse> handleBookingReservationUnavailable(
+      BookingReservationUnavailableException ex, HttpServletRequest request) {
+    return build(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "BOOKING_RESERVATION_UNAVAILABLE",
+        ex.getMessage(),
+        request.getRequestURI());
+  }
+
   @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class})
   public ResponseEntity<ApiErrorResponse> handleBadRequest(
       RuntimeException ex, HttpServletRequest request) {
