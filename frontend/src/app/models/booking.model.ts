@@ -11,6 +11,6 @@ export interface BookingResponse {
   userId: string;
   startTime: string;
   endTime: string;
-  status: 'CONFIRMED' | 'FAILED';
+  status: 'ACTIVE' | 'CONFIRMED' | 'FAILED';
   createdAt: string;
 }

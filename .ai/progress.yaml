@@ -1,5 +1,5 @@
 version: 2
-last_updated: 2026-05-24
+last_updated: 2026-05-25
 current_phase: phase_2_booking
 
 phases:
@@ -51,8 +51,8 @@ phases:
         note: "Booking now uses Redis Lua atomic reservation before DB insert and rolls back Redis on DB save failure"
     frontend_tasks:
       - id: parking_detail_page
-        status: in_progress
-        note: "Detail panel component complete with sticky header/footer + scrollable body"
+        status: done
+        note: "Detail panel component complete and wired to main map booking flow"
       - id: detail_panel_sticky_footer
         status: done
         note: "3-zone layout: pinned header, scrollable body, pinned actions footer with 2 CTA buttons"
@@ -69,9 +69,11 @@ phases:
         status: done
         note: "V3 migration: 10 diverse HCMC parkings, hourlyRate/parkingType/amenity flag columns"
       - id: booking_button
-        status: pending
+        status: done
+        note: "Reserve Spot in detail panel creates demo-user one-hour booking via POST /bookings"
       - id: booking_result_feedback
-        status: pending
+        status: done
+        note: "Map shell shows booking success, no-slot, and reservation-unavailable feedback"
 
   phase_3_realtime:
     status: pending
@@ -108,5 +110,6 @@ notes:
   - "Portfolio sequencing kept: naive booking first, then Redis atomic fix."
   - "Race condition was reproduced via Postman and a basic script with 10 simultaneous booking requests."
   - "Redis atomic booking gate is enabled with fail-closed behavior when Redis is unavailable."
+  - "Phase 2 map detail panel now creates bookings and surfaces success/error feedback."
   - "Phase 1 frontend fully complete including UI polish pass (cards, icons, markers, style arch)."
-  - "Detail panel (phase 2) has full layout + amenities + media section. Booking wiring still pending."
+  - "Detail panel (phase 2) has full layout, amenities, media section, and booking feedback wiring."
