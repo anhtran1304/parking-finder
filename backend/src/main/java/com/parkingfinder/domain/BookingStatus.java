@@ -1,7 +1,9 @@
 package com.parkingfinder.domain;
 
 public enum BookingStatus {
+  PENDING,
   ACTIVE,
-  CONFIRMED,
-  FAILED
+  COMPLETED,
+  CANCELLED,
+  EXPIRED
 }
