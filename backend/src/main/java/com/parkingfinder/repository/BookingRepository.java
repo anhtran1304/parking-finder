@@ -1,10 +1,16 @@
 package com.parkingfinder.repository;
 
+import java.time.Instant;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.parkingfinder.domain.Booking;
+import com.parkingfinder.domain.BookingStatus;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
@@ -13,7 +19,37 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
       SELECT COUNT(b)
       FROM Booking b
       WHERE b.parkingId = :parkingId
-      AND b.status = 'ACTIVE'
+      AND b.status IN (
+        com.parkingfinder.domain.BookingStatus.PENDING,
+        com.parkingfinder.domain.BookingStatus.ACTIVE
+      )
       """)
   long countActiveBookings(@Param("parkingId") Long parkingId);
+
+  @Modifying(clearAutomatically = true)
+  @Transactional
+  @Query(
+      """
+      UPDATE Booking b
+      SET b.status = com.parkingfinder.domain.BookingStatus.ACTIVE
+      WHERE b.status = com.parkingfinder.domain.BookingStatus.PENDING
+      AND b.startTime <= :now
+      """)
+  int activatePendingBookings(@Param("now") Instant now);
+
+  @Query(
+      """
+      SELECT b FROM Booking b
+      WHERE b.status IN (
+        com.parkingfinder.domain.BookingStatus.PENDING,
+        com.parkingfinder.domain.BookingStatus.ACTIVE
+      )
+      AND b.endTime <= :now
+      """)
+  List<Booking> findExpirable(@Param("now") Instant now);
+
+  @Modifying(clearAutomatically = true)
+  @Transactional
+  @Query("UPDATE Booking b SET b.status = :status WHERE b.id IN :ids")
+  int bulkUpdateStatus(@Param("ids") List<Long> ids, @Param("status") BookingStatus status);
 }

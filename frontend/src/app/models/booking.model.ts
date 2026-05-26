@@ -1,3 +1,10 @@
+export type BookingDurationHours = 1 | 2 | 4 | 24;
+
+export interface ReservePayload {
+  parkingId: number;
+  durationHours: BookingDurationHours;
+}
+
 export interface CreateBookingRequest {
   parkingId: number;
   userId: string;
@@ -11,6 +18,6 @@ export interface BookingResponse {
   userId: string;
   startTime: string;
   endTime: string;
-  status: 'ACTIVE' | 'CONFIRMED' | 'FAILED';
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
   createdAt: string;
 }

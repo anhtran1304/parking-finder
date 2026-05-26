@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { BookingDurationHours, ReservePayload } from '../models/booking.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { ButtonComponent } from '../shared/components/button.component';
 import { IconComponent } from '../shared/components/icon.component';
@@ -199,18 +200,32 @@ const ABOUT_MAP: Record<string, string> = {
 
       <!-- --- ACTIONS (pinned footer) --- -->
       <div class="panel__actions">
-        <app-button variant="secondary" (click)="onNavigateClicked()">
-          <app-icon name="navigation" [size]="16" [strokeWidth]="2" />
-          Directions
-        </app-button>
-        <app-button
-          variant="primary"
-          [disabled]="reserveDisabled"
-          [loading]="reserveLoading"
-          (click)="onReserveClicked()"
-        >
-          {{ reserveLabel }}
-        </app-button>
+        <div class="panel__duration">
+          <span class="panel__duration-label">Duration</span>
+          <div class="panel__duration-pills">
+            <button
+              *ngFor="let opt of durationOptions"
+              class="panel__duration-pill"
+              [class.panel__duration-pill--active]="selectedDuration() === opt.value"
+              (click)="selectedDuration.set(opt.value)"
+              type="button"
+            >{{ opt.label }}</button>
+          </div>
+        </div>
+        <div class="panel__cta-row">
+          <app-button variant="secondary" (click)="onNavigateClicked()">
+            <app-icon name="navigation" [size]="16" [strokeWidth]="2" />
+            Directions
+          </app-button>
+          <app-button
+            variant="primary"
+            [disabled]="reserveDisabled"
+            [loading]="reserveLoading"
+            (click)="onReserveClicked()"
+          >
+            {{ reserveLabel }}
+          </app-button>
+        </div>
       </div>
     </aside>
   `,
@@ -612,18 +627,69 @@ const ABOUT_MAP: Record<string, string> = {
       .panel__actions {
         flex-shrink: 0;
         display: flex;
+        flex-direction: column;
         gap: var(--spacing-sm);
-        padding: var(--spacing-lg) var(--spacing-2xl);
+        padding: var(--spacing-md) var(--spacing-2xl) var(--spacing-lg);
         border-top: 1px solid var(--color-border-subtle);
         background: var(--glass-bg);
       }
 
-      .panel__actions app-button {
+      .panel__duration {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+      }
+
+      .panel__duration-label {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-secondary);
+        white-space: nowrap;
+      }
+
+      .panel__duration-pills {
+        display: flex;
+        gap: var(--spacing-xs);
+        flex: 1;
+      }
+
+      .panel__duration-pill {
+        flex: 1;
+        padding: 5px 0;
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-medium);
+        color: var(--color-text-secondary);
+        background: var(--color-bg-subtle);
+        border: 1px solid var(--color-border-default);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: all 150ms ease;
+        text-align: center;
+      }
+
+      .panel__duration-pill:hover {
+        border-color: var(--color-primary-base);
+        color: var(--color-primary-base);
+      }
+
+      .panel__duration-pill--active {
+        background: var(--color-primary-light);
+        border-color: var(--color-primary-base);
+        color: var(--color-primary-base);
+        font-weight: var(--font-weight-semibold);
+      }
+
+      .panel__cta-row {
+        display: flex;
+        gap: var(--spacing-sm);
+      }
+
+      .panel__cta-row app-button {
         flex: 1;
         display: block;
       }
 
-      .panel__actions app-button ::ng-deep .btn {
+      .panel__cta-row app-button ::ng-deep .btn {
         width: 100%;
         justify-content: center;
       }
@@ -636,12 +702,20 @@ export class DetailPanelComponent {
   @Input() reserveDisabled = false;
   @Input() reserveLoading = false;
   @Input() reserveLabel = 'Reserve Spot';
-  @Output() reserveClicked = new EventEmitter<NearbyParkingResponse>();
+  @Output() reserveClicked = new EventEmitter<ReservePayload>();
   @Output() navigateClicked = new EventEmitter<NearbyParkingResponse>();
   @Output() closeClicked = new EventEmitter<void>();
 
   readonly stars = [1, 2, 3, 4, 5];
   activeImageIndex = 0;
+  selectedDuration = signal<BookingDurationHours>(1);
+
+  readonly durationOptions: { label: string; value: BookingDurationHours }[] = [
+    { label: '1h', value: 1 },
+    { label: '2h', value: 2 },
+    { label: '4h', value: 4 },
+    { label: 'Day', value: 24 },
+  ];
 
   get filledStars(): number {
     return Math.round(this.parking?.rating || 4);
@@ -663,7 +737,7 @@ export class DetailPanelComponent {
 
   onReserveClicked(): void {
     if (this.parking && !this.reserveDisabled && !this.reserveLoading) {
-      this.reserveClicked.emit(this.parking);
+      this.reserveClicked.emit({ parkingId: this.parking.id, durationHours: this.selectedDuration() });
     }
   }
 

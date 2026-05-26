@@ -1,11 +1,13 @@
 package com.parkingfinder.service;
 
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,10 @@ public class SlotCounterService {
   }
 
   public void rollbackReserve(Long parkingId) {
+    redisTemplate.opsForValue().increment(slotKey(parkingId));
+  }
+
+  public void releaseSlot(Long parkingId) {
     redisTemplate.opsForValue().increment(slotKey(parkingId));
   }
 

@@ -50,7 +50,7 @@ class BookingServiceTest {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
         new CreateBookingRequest(
-            1L, "user-1", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            1L, "user-1", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
@@ -62,7 +62,7 @@ class BookingServiceTest {
     saved.setUserId("user-1");
     saved.setStartTime(request.startTime());
     saved.setEndTime(request.endTime());
-    saved.setStatus(BookingStatus.ACTIVE);
+    saved.setStatus(BookingStatus.PENDING);
     saved.setCreatedAt(Instant.now());
 
     when(bookingRepository.save(any(Booking.class))).thenReturn(saved);
@@ -70,7 +70,7 @@ class BookingServiceTest {
     BookingResponse response = bookingService.createBooking(request);
 
     assertThat(response.id()).isEqualTo(100L);
-    assertThat(response.status()).isEqualTo(BookingStatus.ACTIVE);
+    assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
     verify(slotCounterService).tryReserveSlot(1L, 1);
   }
 
@@ -79,7 +79,7 @@ class BookingServiceTest {
     Parking parking = parking(1L, 1, 1);
     CreateBookingRequest request =
         new CreateBookingRequest(
-            1L, "user-2", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            1L, "user-2", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
@@ -96,7 +96,7 @@ class BookingServiceTest {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
         new CreateBookingRequest(
-            1L, "user-4", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            1L, "user-4", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
@@ -113,7 +113,7 @@ class BookingServiceTest {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
         new CreateBookingRequest(
-            1L, "user-5", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            1L, "user-5", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
     RuntimeException dbFailure = new RuntimeException("db unavailable");
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
@@ -131,7 +131,7 @@ class BookingServiceTest {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
         new CreateBookingRequest(
-            1L, "user-6", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            1L, "user-6", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
@@ -148,7 +148,7 @@ class BookingServiceTest {
   void createBooking_shouldNotCallRedis_whenParkingMissing() {
     CreateBookingRequest request =
         new CreateBookingRequest(
-            404L, "user-7", Instant.now().plusSeconds(600), Instant.now().plusSeconds(1200));
+            404L, "user-7", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(404L)).thenReturn(Optional.empty());
 
@@ -170,6 +170,63 @@ class BookingServiceTest {
         .isInstanceOf(IllegalArgumentException.class);
 
     verifyNoInteractions(parkingRepository, bookingRepository, slotCounterService);
+  }
+
+  @Test
+  void cancelBooking_shouldSucceed_whenActive() {
+    Booking booking = new Booking();
+    booking.setId(10L);
+    booking.setParkingId(1L);
+    booking.setUserId("user-1");
+    booking.setStartTime(Instant.now().minusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(3300));
+    booking.setStatus(BookingStatus.ACTIVE);
+    booking.setCreatedAt(Instant.now().minusSeconds(600));
+
+    when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+    BookingResponse response = bookingService.cancelBooking(10L);
+
+    assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
+    verify(slotCounterService).releaseSlot(1L);
+  }
+
+  @Test
+  void cancelBooking_shouldSucceed_whenPending() {
+    Booking booking = new Booking();
+    booking.setId(11L);
+    booking.setParkingId(2L);
+    booking.setUserId("user-2");
+    booking.setStartTime(Instant.now().plusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(3900));
+    booking.setStatus(BookingStatus.PENDING);
+    booking.setCreatedAt(Instant.now());
+
+    when(bookingRepository.findById(11L)).thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+    BookingResponse response = bookingService.cancelBooking(11L);
+
+    assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
+    verify(slotCounterService).releaseSlot(2L);
+  }
+
+  @Test
+  void cancelBooking_shouldThrow_whenAlreadyCompleted() {
+    Booking booking = new Booking();
+    booking.setId(12L);
+    booking.setParkingId(1L);
+    booking.setStatus(BookingStatus.COMPLETED);
+
+    when(bookingRepository.findById(12L)).thenReturn(Optional.of(booking));
+
+    assertThatThrownBy(() -> bookingService.cancelBooking(12L))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("COMPLETED");
+
+    verify(bookingRepository, never()).save(any());
+    verify(slotCounterService, never()).releaseSlot(any());
   }
 
   private Parking parking(Long id, int totalSlots, int availableSlots) {
