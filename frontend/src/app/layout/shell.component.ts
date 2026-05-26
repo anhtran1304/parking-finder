@@ -5,7 +5,7 @@ import { catchError, finalize, of, tap } from 'rxjs';
 import { BookingApiService } from '../core/services/booking-api.service';
 import { ParkingApiService } from '../core/services/parking-api.service';
 import { ParkingMapComponent } from '../features/parking/parking-map.component';
-import { CreateBookingRequest } from '../models/booking.model';
+import { CreateBookingRequest, ReservePayload } from '../models/booking.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { DetailPanelComponent } from './detail-panel.component';
 import { SidebarComponent } from './sidebar.component';
@@ -177,15 +177,17 @@ export class ShellComponent implements OnInit {
   selectedParking = signal<NearbyParkingResponse | null>(null);
   hoveredParkingId = signal<number | null>(null);
   activeFilters = signal<ParkingFilter[]>([]);
+  searchQuery = signal('');
   bookingInFlight = signal(false);
   bookingFeedback = signal<BookingFeedback | null>(null);
 
   filteredParkings = computed(() => {
     const all = this.parkings();
     const filters = this.activeFilters();
-    if (filters.length === 0) return all;
+    const q = this.searchQuery().toLowerCase();
 
     return all.filter((p) => {
+      if (q && !p.name.toLowerCase().includes(q)) return false;
       for (const f of filters) {
         if (f === 'available' && p.availableSlots <= 0) return false;
       }
@@ -245,11 +247,14 @@ export class ShellComponent implements OnInit {
   }
 
   onSearch(query: string): void {
-    // Search/filter logic will be added later.
+    this.searchQuery.set(query.trim());
   }
 
-  onReserve(parking: NearbyParkingResponse): void {
+  onReserve(payload: ReservePayload): void {
     if (this.bookingInFlight()) return;
+
+    const parking = this.selectedParking();
+    if (!parking) return;
 
     if (parking.availableSlots <= 0) {
       this.bookingFeedback.set({
@@ -263,14 +268,14 @@ export class ShellComponent implements OnInit {
     this.bookingFeedback.set(null);
 
     this.bookingApiService
-      .createBooking(this.defaultBookingRequest(parking.id))
+      .createBooking(this.buildBookingRequest(payload))
       .pipe(
         tap((response) => {
           this.applyBookedSlot(response.parkingId);
           this.parkingApiService.evictParkingDetail(response.parkingId);
           this.bookingFeedback.set({
             type: 'success',
-            message: `Booking #${response.id} created successfully.`,
+            message: `Booking #${response.id} confirmed — ${payload.durationHours === 24 ? '1 day' : payload.durationHours + 'h'}.`,
           });
         }),
         catchError((error: HttpErrorResponse) => {
@@ -292,12 +297,12 @@ export class ShellComponent implements OnInit {
     );
   }
 
-  private defaultBookingRequest(parkingId: number): CreateBookingRequest {
+  private buildBookingRequest(payload: ReservePayload): CreateBookingRequest {
     const startTime = new Date(Date.now() + 5 * 60 * 1000);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+    const endTime = new Date(startTime.getTime() + payload.durationHours * 60 * 60 * 1000);
 
     return {
-      parkingId,
+      parkingId: payload.parkingId,
       userId: 'demo-user',
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
