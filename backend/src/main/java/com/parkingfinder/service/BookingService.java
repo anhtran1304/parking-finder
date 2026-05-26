@@ -1,5 +1,6 @@
 package com.parkingfinder.service;
 
+import java.time.Duration;
 import java.time.Instant;
 
 import org.springframework.stereotype.Service;
@@ -56,7 +57,7 @@ public class BookingService {
     booking.setUserId(request.userId());
     booking.setStartTime(request.startTime());
     booking.setEndTime(request.endTime());
-    booking.setStatus(BookingStatus.ACTIVE);
+    booking.setStatus(BookingStatus.PENDING);
     booking.setCreatedAt(Instant.now());
 
     Booking saved;
@@ -82,6 +83,13 @@ public class BookingService {
   private void validateBookingWindow(CreateBookingRequest request) {
     if (!request.endTime().isAfter(request.startTime())) {
       throw new IllegalArgumentException("endTime must be after startTime");
+    }
+    Duration duration = Duration.between(request.startTime(), request.endTime());
+    if (duration.toMinutes() < 30) {
+      throw new IllegalArgumentException("Booking duration must be at least 30 minutes");
+    }
+    if (duration.toHours() > 24) {
+      throw new IllegalArgumentException("Booking duration cannot exceed 24 hours");
     }
   }
 
@@ -115,5 +123,25 @@ public class BookingService {
         booking.getEndTime(),
         booking.getStatus(),
         booking.getCreatedAt());
+  }
+
+  @Transactional
+  public BookingResponse cancelBooking(Long bookingId) {
+    Booking booking =
+        bookingRepository
+            .findById(bookingId)
+            .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+    if (booking.getStatus() != BookingStatus.PENDING
+        && booking.getStatus() != BookingStatus.ACTIVE) {
+      throw new IllegalStateException(
+          "Cannot cancel booking in status: " + booking.getStatus());
+    }
+
+    booking.setStatus(BookingStatus.CANCELLED);
+    Booking saved = bookingRepository.save(booking);
+    slotCounterService.releaseSlot(booking.getParkingId());
+
+    return toResponse(saved);
   }
 }
