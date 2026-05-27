@@ -104,8 +104,8 @@ phases:
         status: done
         note: "Springdoc Swagger UI enabled, OpenAPI bearer scheme configured, and endpoint tag/summary/description/response annotations standardized"
       - id: active_booking_api
-        status: pending
-        note: "GET /bookings/active returns current user's in-progress reservation"
+        status: done
+        note: "GET /bookings/active returns current user's ACTIVE booking; empty result returns HTTP 200 with empty body"
     frontend_tasks:
       - id: sign_in_page
         status: pending

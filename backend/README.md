@@ -15,7 +15,10 @@ mvn spring-boot:run
 - `GET /parkings/nearby?lat=&lng=&radius=`
 - `GET /parkings/{id}`
 - `POST /bookings`
+- `GET /bookings`
+- `GET /bookings/active`
 - `GET /bookings/{id}`
+- `PATCH /bookings/{id}/cancel`
 
 ## API Docs (Swagger)
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
