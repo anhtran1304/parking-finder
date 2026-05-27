@@ -1,114 +1,87 @@
 # Task: Setup Backend (Spring Boot)
 
+Last reviewed: 2026-05-27
+
 ## Goal
-Initialize a Spring Boot backend with clean architecture, ready for:
-- PostGIS integration
-- Redis caching
-- Booking logic
+Bootstrap backend with current project baseline:
+- parking discovery
+- booking workflow
+- JWT auth
+- Swagger/OpenAPI docs
 
----
+## Runtime Baseline
 
-## Project Setup
+- Java: 17
+- Spring Boot: 3.3.5
+- Build: Maven
 
-- Use Spring Boot (latest stable)
-- Build tool: Maven or Gradle
-- Java version: 17+
+## Required Dependencies
 
-### Required Dependencies
-- Spring Web
-- Spring Data JPA
-- PostgreSQL Driver
-- Spring Data Redis
-- Lombok (optional)
-
----
+- spring-boot-starter-web
+- spring-boot-starter-validation
+- spring-boot-starter-data-jpa
+- spring-boot-starter-security
+- spring-boot-starter-data-redis
+- flyway-core
+- postgresql driver
+- springdoc-openapi-starter-webmvc-ui
+- jjwt (api/impl/jackson)
+- spring-boot-starter-test + spring-security-test
 
 ## Package Structure
 
-Use modular layered architecture:
-
 com.parkingfinder
-├── controller        # REST endpoints
-├── service           # business logic
-├── repository        # database access
-├── domain            # entities
-├── dto               # request/response objects
-├── config            # redis, db config
-└── exception         # global error handling
+- controller
+- service
+- repository
+- domain
+- dto
+- config
+- exception
 
----
+## API Baseline
 
-## Core Modules to Create
-
-### 1. Parking
-- CRUD parking
-- Geo location (PostGIS)
-
-### 2. Booking
-- Create booking
-- Validate slot availability
-
----
-
-## Database Integration
-
-- Use PostgreSQL with PostGIS
-- Use Hibernate Spatial
-
-### Rule
-- Location must be stored as `geometry(Point, 4326)`
-
----
-
-## Redis Integration
-
-- Connect to Redis
-- Use for:
-  - caching parking slots
-  - atomic slot updates
-
----
-
-## Booking Flow (IMPORTANT)
-
-1. Check slot in Redis
-2. If available -> decrement
-3. Save booking in DB
-4. If DB fails -> rollback Redis
-
----
-
-## API Design (initial)
-
-### Parking APIs
-- GET /parkings/nearby?lat=&lng=&radius=
+Public:
+- GET /parkings/nearby
 - GET /parkings/{id}
+- POST /parkings
 
-### Booking APIs
+Auth:
+- POST /auth/register
+- POST /auth/login
+- POST /auth/refresh
+- POST /auth/logout
+
+Protected:
+- GET /users/me
 - POST /bookings
+- GET /bookings
 - GET /bookings/{id}
+- PATCH /bookings/{id}/cancel
 
----
+## Security Baseline
 
-## Rules
+- Stateless security filter chain
+- JwtAuthFilter before UsernamePasswordAuthenticationFilter
+- Access token in Authorization header
+- Refresh token in HttpOnly cookie
 
-- Controllers must be thin
-- Business logic only in service layer
-- Always validate data before saving
-- Do not trust Redis alone -> always confirm with DB
+## Booking Consistency Rules
 
----
+1. Validate booking input and parking existence
+2. Reserve slot atomically in Redis
+3. Save booking in PostgreSQL
+4. Roll back Redis reserve if DB save fails
 
-## Deliverables
+## Definition of Done
 
-- Running Spring Boot app
-- Connected to Postgres + Redis
-- Basic APIs working
-
----
+- App runs with Postgres + Redis
+- Flyway migrations apply successfully
+- Swagger UI available at /swagger-ui.html
+- Controller and service tests pass
 
 ## Notes for AI Agent
 
-- Prefer simple implementation first
-- Add comments explaining trade-offs
-- Avoid over-engineering
+- Keep controllers thin
+- Keep business rules in service layer
+- Treat PostgreSQL as source of truth
