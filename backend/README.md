@@ -17,6 +17,15 @@ mvn spring-boot:run
 - `POST /bookings`
 - `GET /bookings/{id}`
 
+## API Docs (Swagger)
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+- OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+
+If you want to call protected endpoints from Swagger UI:
+1. Login via `POST /auth/login` and copy `accessToken` from response.
+2. Click `Authorize` in Swagger UI.
+3. Paste token as `Bearer <accessToken>`.
+
 ## Notes
 - Redis is cache and fast counter layer.
 - Postgres remains source of truth.
