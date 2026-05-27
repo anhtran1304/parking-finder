@@ -40,7 +40,14 @@ public class GlobalExceptionHandler {
         request.getRequestURI());
   }
 
-  @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class})
+  @ExceptionHandler(DuplicateEmailException.class)
+  public ResponseEntity<ApiErrorResponse> handleDuplicateEmail(
+      DuplicateEmailException ex, HttpServletRequest request) {
+    return build(HttpStatus.CONFLICT, "DUPLICATE_EMAIL", ex.getMessage(), request.getRequestURI());
+  }
+
+  @ExceptionHandler(
+      {IllegalArgumentException.class, IllegalStateException.class, ConstraintViolationException.class})
   public ResponseEntity<ApiErrorResponse> handleBadRequest(
       RuntimeException ex, HttpServletRequest request) {
     return build(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), request.getRequestURI());
