@@ -1,4 +1,5 @@
 project_name: Parking Finder
+last_reviewed: 2026-05-27
 
 architecture:
   style: monolith (modular)
@@ -6,13 +7,25 @@ architecture:
 
 frontend:
   framework: angular
+  version: 21.x
+  ui:
+    - tailwindcss 4.x
+    - leaflet 1.9.x
+    - lucide icons
   notes:
     - use rxjs for async data
     - prefer resolver for prefetch data
 
 backend:
   framework: spring boot
+  spring_boot_version: 3.3.5
   language: java
+  java_version: 17
+  security:
+    - spring security 6
+    - jjwt 0.12.x
+  api_docs:
+    - springdoc openapi (swagger-ui)
   patterns:
     - layered architecture
     - service + repository pattern
@@ -28,12 +41,23 @@ cache:
   provider: redis
   usage:
     - cache parking availability
-    - atomic counter for slot booking
+    - atomic slot reservation gate (lua + decr)
     - optional pub/sub for realtime
 
 realtime:
   method: websocket (optional)
   fallback: polling
+
+auth:
+  mode: jwt stateless
+  access_token: bearer token
+  refresh_token: httpOnly cookie + hashed persistence
+
+testing:
+  backend:
+    - spring boot test
+    - mockmvc
+    - junit 5
 
 mobile:
   strategy: pwa first
