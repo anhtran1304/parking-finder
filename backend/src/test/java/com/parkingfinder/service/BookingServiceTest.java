@@ -1,6 +1,7 @@
 package com.parkingfinder.service;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,6 +20,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.parkingfinder.domain.Booking;
 import com.parkingfinder.domain.BookingStatus;
@@ -164,6 +169,62 @@ class BookingServiceTest {
         .isInstanceOf(IllegalArgumentException.class);
 
     verifyNoInteractions(parkingRepository, bookingRepository, slotCounterService);
+  }
+
+  @Test
+  void getUserBookings_shouldReturnPage_whenStatusFilterMissing() {
+    Pageable pageable = PageRequest.of(0, 10);
+    Booking booking = new Booking();
+    booking.setId(21L);
+    booking.setParkingId(2L);
+    booking.setUserId("user-1@example.com");
+    booking.setStartTime(Instant.now().minusSeconds(600));
+    booking.setEndTime(Instant.now().plusSeconds(1800));
+    booking.setStatus(BookingStatus.ACTIVE);
+    booking.setCreatedAt(Instant.now().minusSeconds(900));
+
+    Page<Booking> bookingPage = new PageImpl<>(List.of(booking), pageable, 1);
+    when(bookingRepository.findByUserId("user-1@example.com", pageable)).thenReturn(bookingPage);
+
+    Page<BookingResponse> responsePage =
+        bookingService.getUserBookings("user-1@example.com", null, pageable);
+
+    assertThat(responsePage.getTotalElements()).isEqualTo(1);
+    assertThat(responsePage.getContent()).hasSize(1);
+    assertThat(responsePage.getContent().get(0).id()).isEqualTo(21L);
+    assertThat(responsePage.getContent().get(0).status()).isEqualTo(BookingStatus.ACTIVE);
+    verify(bookingRepository).findByUserId("user-1@example.com", pageable);
+    verify(bookingRepository, never())
+        .findByUserIdAndStatus("user-1@example.com", BookingStatus.ACTIVE, pageable);
+  }
+
+  @Test
+  void getUserBookings_shouldReturnFilteredPage_whenStatusFilterProvided() {
+    Pageable pageable = PageRequest.of(1, 5);
+    Booking booking = new Booking();
+    booking.setId(22L);
+    booking.setParkingId(3L);
+    booking.setUserId("user-2@example.com");
+    booking.setStartTime(Instant.now().minusSeconds(3600));
+    booking.setEndTime(Instant.now().minusSeconds(1200));
+    booking.setStatus(BookingStatus.COMPLETED);
+    booking.setCreatedAt(Instant.now().minusSeconds(4000));
+
+    Page<Booking> bookingPage = new PageImpl<>(List.of(booking), pageable, 6);
+    when(bookingRepository.findByUserIdAndStatus(
+            "user-2@example.com", BookingStatus.COMPLETED, pageable))
+        .thenReturn(bookingPage);
+
+    Page<BookingResponse> responsePage =
+        bookingService.getUserBookings("user-2@example.com", BookingStatus.COMPLETED, pageable);
+
+    assertThat(responsePage.getTotalElements()).isEqualTo(6);
+    assertThat(responsePage.getNumber()).isEqualTo(1);
+    assertThat(responsePage.getSize()).isEqualTo(5);
+    assertThat(responsePage.getContent().get(0).status()).isEqualTo(BookingStatus.COMPLETED);
+    verify(bookingRepository)
+        .findByUserIdAndStatus("user-2@example.com", BookingStatus.COMPLETED, pageable);
+    verify(bookingRepository, never()).findByUserId("user-2@example.com", pageable);
   }
 
   @Test

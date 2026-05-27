@@ -1,6 +1,6 @@
 version: 3
-last_updated: 2026-05-25
-current_phase: phase_2_booking
+last_updated: 2026-05-27
+current_phase: phase_3_user_journey
 
 phases:
   phase_1_core_search:
@@ -40,7 +40,7 @@ phases:
         note: "Vertical layout: title, meta row (distance+price), status row with dot"
 
   phase_2_booking:
-    status: in_progress
+    status: done
     backend_tasks:
       - id: implement_booking_naive
         status: done
@@ -88,18 +88,18 @@ phases:
         note: "Wire search bar to filter parking list by name/address"
 
   phase_3_user_journey:
-    status: pending
+    status: in_progress
     note: "Auth + booking lifecycle — must come BEFORE realtime (WS needs identity)"
     backend_tasks:
       - id: basic_auth_jwt
-        status: pending
-        note: "Spring Security + JWT register/login endpoints, refresh token"
+        status: done
+        note: "Spring Security + JWT access/refresh flow, auth endpoints, secured /bookings, booking userId sourced from JWT principal"
       - id: current_user_endpoint
-        status: pending
-        note: "GET /users/me returns authenticated user profile"
+        status: done
+        note: "GET /users/me implemented with JWT principal resolution and secured route"
       - id: booking_history_api
-        status: pending
-        note: "GET /bookings?status= with pagination, filtered by authenticated user"
+        status: done
+        note: "GET /bookings with page/size/sort/status supports Spring Page response scoped to authenticated principal"
       - id: active_booking_api
         status: pending
         note: "GET /bookings/active returns current user's in-progress reservation"

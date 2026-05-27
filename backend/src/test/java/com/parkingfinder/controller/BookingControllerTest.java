@@ -1,6 +1,7 @@
 package com.parkingfinder.controller;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,7 +10,11 @@ import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.test.web.servlet.MockMvc;
@@ -107,4 +112,61 @@ class BookingControllerTest {
         .andExpect(jsonPath("$.id").value(9))
         .andExpect(jsonPath("$.parkingId").value(2));
   }
+
+    @Test
+    void getCurrentUserBookings_shouldReturnPagedBookings_whenNoStatusFilter() throws Exception {
+        BookingResponse booking =
+                new BookingResponse(
+                        13L,
+                        4L,
+                        "user-1@example.com",
+                        Instant.now().minusSeconds(300),
+                        Instant.now().plusSeconds(3300),
+                        BookingStatus.ACTIVE,
+                        Instant.now().minusSeconds(600));
+        Page<BookingResponse> page = new PageImpl<>(List.of(booking), PageRequest.of(0, 10), 1);
+
+        when(bookingService.getUserBookings(anyString(), any(), any())).thenReturn(page);
+
+        mockMvc
+                .perform(get("/bookings").param("page", "0").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(13))
+                .andExpect(jsonPath("$.content[0].status").value("ACTIVE"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.number").value(0))
+                .andExpect(jsonPath("$.size").value(10));
+    }
+
+    @Test
+    void getCurrentUserBookings_shouldReturnFilteredPage_whenStatusProvided() throws Exception {
+        BookingResponse booking =
+                new BookingResponse(
+                        14L,
+                        5L,
+                        "user-1@example.com",
+                        Instant.now().minusSeconds(7200),
+                        Instant.now().minusSeconds(3600),
+                        BookingStatus.COMPLETED,
+                        Instant.now().minusSeconds(8000));
+        Page<BookingResponse> page = new PageImpl<>(List.of(booking), PageRequest.of(0, 5), 1);
+
+        when(bookingService.getUserBookings(anyString(), any(), any())).thenReturn(page);
+
+        mockMvc
+                .perform(get("/bookings").param("status", "COMPLETED").param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(14))
+                .andExpect(jsonPath("$.content[0].status").value("COMPLETED"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.size").value(5));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void getCurrentUserBookings_shouldReturnUnauthorized_whenUnauthenticated() throws Exception {
+        mockMvc
+                .perform(get("/bookings"))
+                .andExpect(status().isUnauthorized());
+    }
 }

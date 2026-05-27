@@ -3,6 +3,8 @@ package com.parkingfinder.service;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,6 +84,22 @@ public class BookingService {
             .findById(bookingId)
             .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
     return toResponse(booking);
+  }
+
+  @Transactional(readOnly = true)
+  public Page<BookingResponse> getUserBookings(
+      String userId,
+      BookingStatus status,
+      Pageable pageable) {
+    if (userId == null || userId.isBlank()) {
+      throw new IllegalArgumentException("userId is required");
+    }
+
+    Page<Booking> bookings =
+        status == null
+            ? bookingRepository.findByUserId(userId, pageable)
+            : bookingRepository.findByUserIdAndStatus(userId, status, pageable);
+    return bookings.map(this::toResponse);
   }
 
   private void validateBookingWindow(CreateBookingRequest request) {
