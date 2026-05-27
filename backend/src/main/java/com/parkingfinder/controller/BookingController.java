@@ -1,5 +1,7 @@
 package com.parkingfinder.controller;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,8 +25,13 @@ public class BookingController {
   private final BookingService bookingService;
 
   @PostMapping
-  public BookingResponse createBooking(@Valid @RequestBody CreateBookingRequest request) {
-    return bookingService.createBooking(request);
+  public BookingResponse createBooking(
+      @Valid @RequestBody CreateBookingRequest request,
+      @AuthenticationPrincipal UserDetails userDetails) {
+    if (userDetails == null) {
+      throw new IllegalStateException("Authenticated user is required");
+    }
+    return bookingService.createBooking(request, userDetails.getUsername());
   }
 
   @GetMapping("/{id}")

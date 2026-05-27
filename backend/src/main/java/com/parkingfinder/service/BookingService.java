@@ -30,7 +30,11 @@ public class BookingService {
   private final SlotCounterService slotCounterService;
 
   @Transactional
-  public BookingResponse createBooking(CreateBookingRequest request) {
+  public BookingResponse createBooking(CreateBookingRequest request, String userId) {
+    if (userId == null || userId.isBlank()) {
+      throw new IllegalArgumentException("userId is required");
+    }
+
     validateBookingWindow(request);
 
     Parking parking =
@@ -54,7 +58,7 @@ public class BookingService {
 
     Booking booking = new Booking();
     booking.setParkingId(request.parkingId());
-    booking.setUserId(request.userId());
+    booking.setUserId(userId);
     booking.setStartTime(request.startTime());
     booking.setEndTime(request.endTime());
     booking.setStatus(BookingStatus.PENDING);
