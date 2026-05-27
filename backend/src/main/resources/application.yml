@@ -31,6 +31,11 @@ server:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
+  jwt:
+    secret: ${JWT_SECRET:local-dev-secret-key-change-this-before-prod-12345}
+    access-token-expiry-seconds: ${JWT_ACCESS_EXPIRY:900}
+    refresh-token-expiry-days: ${JWT_REFRESH_EXPIRY_DAYS:7}
+    cookie-secure: ${JWT_COOKIE_SECURE:false}
   cache:
     parking-detail-ttl-seconds: ${PARKING_DETAIL_TTL_SECONDS:300}
     nearby-ttl-seconds: ${PARKING_NEARBY_TTL_SECONDS:300}

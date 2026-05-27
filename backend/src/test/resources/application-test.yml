@@ -11,3 +11,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.spatial.dialect.postgis.PostgisPG10Dialect
+
+app:
+  jwt:
+    secret: test-secret-key-that-is-at-least-32-chars-long
+    access-token-expiry-seconds: 900
+    refresh-token-expiry-days: 7
+    cookie-secure: false
