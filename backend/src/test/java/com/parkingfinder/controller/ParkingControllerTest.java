@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -23,15 +24,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parkingfinder.dto.CreateParkingRequest;
 import com.parkingfinder.dto.NearbyParkingResponse;
 import com.parkingfinder.dto.ParkingDetailResponse;
+import com.parkingfinder.service.JwtService;
 import com.parkingfinder.service.ParkingService;
 
 @WebMvcTest(ParkingController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ParkingControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
 
   @MockBean private ParkingService parkingService;
+    @MockBean private JwtService jwtService;
 
   @Test
   void getParkingById_shouldReturnParkingDetail() throws Exception {

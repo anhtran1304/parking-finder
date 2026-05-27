@@ -49,8 +49,7 @@ class BookingServiceTest {
   void createBooking_shouldSucceed_whenSlotsAvailable() {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-1", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
@@ -67,7 +66,7 @@ class BookingServiceTest {
 
     when(bookingRepository.save(any(Booking.class))).thenReturn(saved);
 
-    BookingResponse response = bookingService.createBooking(request);
+    BookingResponse response = bookingService.createBooking(request, "user-1");
 
     assertThat(response.id()).isEqualTo(100L);
     assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
@@ -78,13 +77,12 @@ class BookingServiceTest {
   void createBooking_shouldThrow_whenNoAvailableSlotInDatabase() {
     Parking parking = parking(1L, 1, 1);
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-2", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
 
-    assertThatThrownBy(() -> bookingService.createBooking(request))
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-2"))
         .isInstanceOf(NoAvailableSlotException.class);
 
     verify(slotCounterService, never()).tryReserveSlot(any(), anyInt());
@@ -95,14 +93,13 @@ class BookingServiceTest {
   void createBooking_shouldThrow_whenRedisReserveReturnsFalse() {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-4", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
     when(slotCounterService.tryReserveSlot(1L, 2)).thenReturn(false);
 
-    assertThatThrownBy(() -> bookingService.createBooking(request))
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-4"))
         .isInstanceOf(NoAvailableSlotException.class);
 
     verify(bookingRepository, never()).save(any());
@@ -112,8 +109,7 @@ class BookingServiceTest {
   void createBooking_shouldRollbackRedisReserve_whenDatabaseSaveFails() {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-5", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
     RuntimeException dbFailure = new RuntimeException("db unavailable");
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
@@ -121,7 +117,7 @@ class BookingServiceTest {
     when(slotCounterService.tryReserveSlot(1L, 2)).thenReturn(true);
     when(bookingRepository.save(any(Booking.class))).thenThrow(dbFailure);
 
-    assertThatThrownBy(() -> bookingService.createBooking(request)).isSameAs(dbFailure);
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-5")).isSameAs(dbFailure);
 
     verify(slotCounterService).rollbackReserve(1L);
   }
@@ -130,14 +126,13 @@ class BookingServiceTest {
   void createBooking_shouldThrowServiceUnavailable_whenRedisReserveFails() {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-6", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
     when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
     when(slotCounterService.tryReserveSlot(1L, 2)).thenThrow(new RuntimeException("redis down"));
 
-    assertThatThrownBy(() -> bookingService.createBooking(request))
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-6"))
         .isInstanceOf(BookingReservationUnavailableException.class)
         .hasMessage("Booking reservation system unavailable");
 
@@ -147,12 +142,11 @@ class BookingServiceTest {
   @Test
   void createBooking_shouldNotCallRedis_whenParkingMissing() {
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            404L, "user-7", Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
+        new CreateBookingRequest(404L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(404L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> bookingService.createBooking(request))
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-7"))
         .isInstanceOf(ResourceNotFoundException.class);
 
     verifyNoInteractions(slotCounterService);
@@ -164,9 +158,9 @@ class BookingServiceTest {
     Instant start = Instant.now().plusSeconds(1200);
     Instant end = Instant.now().plusSeconds(600);
 
-    CreateBookingRequest request = new CreateBookingRequest(1L, "user-3", start, end);
+    CreateBookingRequest request = new CreateBookingRequest(1L, start, end);
 
-    assertThatThrownBy(() -> bookingService.createBooking(request))
+    assertThatThrownBy(() -> bookingService.createBooking(request, "user-3"))
         .isInstanceOf(IllegalArgumentException.class);
 
     verifyNoInteractions(parkingRepository, bookingRepository, slotCounterService);

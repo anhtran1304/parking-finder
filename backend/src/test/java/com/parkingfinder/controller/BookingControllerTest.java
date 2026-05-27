@@ -4,11 +4,14 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -21,8 +24,10 @@ import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
 import com.parkingfinder.service.BookingService;
+import com.parkingfinder.service.JwtService;
 
 @WebMvcTest(BookingController.class)
+@WithMockUser(username = "user-1@example.com", roles = "USER")
 class BookingControllerTest {
 
   @Autowired private MockMvc mockMvc;
@@ -30,12 +35,12 @@ class BookingControllerTest {
   @Autowired private ObjectMapper objectMapper;
 
   @MockBean private BookingService bookingService;
+    @MockBean private JwtService jwtService;
 
   @Test
   void createBooking_shouldReturnCreatedBooking() throws Exception {
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-1", Instant.now().plusSeconds(300), Instant.now().plusSeconds(900));
+                new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(900));
 
     BookingResponse response =
         new BookingResponse(
@@ -47,11 +52,12 @@ class BookingControllerTest {
             BookingStatus.ACTIVE,
             Instant.now());
 
-    when(bookingService.createBooking(any(CreateBookingRequest.class))).thenReturn(response);
+    when(bookingService.createBooking(any(CreateBookingRequest.class), anyString())).thenReturn(response);
 
     mockMvc
         .perform(
             post("/bookings")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isOk())
@@ -63,10 +69,9 @@ class BookingControllerTest {
   void createBooking_shouldReturnServiceUnavailable_whenReservationSystemUnavailable()
       throws Exception {
     CreateBookingRequest request =
-        new CreateBookingRequest(
-            1L, "user-1", Instant.now().plusSeconds(300), Instant.now().plusSeconds(900));
+        new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(900));
 
-    when(bookingService.createBooking(any(CreateBookingRequest.class)))
+    when(bookingService.createBooking(any(CreateBookingRequest.class), anyString()))
         .thenThrow(
             new BookingReservationUnavailableException(
                 "Booking reservation system unavailable", new RuntimeException("redis down")));
@@ -74,6 +79,7 @@ class BookingControllerTest {
     mockMvc
         .perform(
             post("/bookings")
+                .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isServiceUnavailable())
