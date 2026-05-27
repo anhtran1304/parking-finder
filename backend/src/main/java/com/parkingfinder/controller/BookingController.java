@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -109,6 +110,33 @@ public class BookingController {
 
     Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
     return bookingService.getUserBookings(userDetails.getUsername(), status, pageable);
+  }
+
+  @GetMapping("/active")
+    @Operation(
+      summary = "Get active booking",
+      description = "Get the current ACTIVE booking for the authenticated user")
+    @ApiResponses({
+      @ApiResponse(
+        responseCode = "200",
+        description = "Active booking returned, or empty body when no active booking exists",
+        content = @Content(schema = @Schema(implementation = BookingResponse.class))),
+      @ApiResponse(
+        responseCode = "401",
+        description = "Unauthorized",
+        content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
+    })
+  public ResponseEntity<BookingResponse> getActiveBooking(
+      @AuthenticationPrincipal UserDetails userDetails) {
+    if (userDetails == null) {
+      throw new IllegalStateException("Authenticated user is required");
+    }
+
+    BookingResponse activeBooking = bookingService.getActiveUserBooking(userDetails.getUsername());
+    if (activeBooking == null) {
+      return ResponseEntity.ok().build();
+    }
+    return ResponseEntity.ok(activeBooking);
   }
 
   @GetMapping("/{id}")

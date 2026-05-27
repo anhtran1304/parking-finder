@@ -14,6 +14,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -225,6 +226,58 @@ class BookingServiceTest {
     verify(bookingRepository)
         .findByUserIdAndStatus("user-2@example.com", BookingStatus.COMPLETED, pageable);
     verify(bookingRepository, never()).findByUserId("user-2@example.com", pageable);
+  }
+
+  @Test
+  void getActiveUserBooking_shouldReturnBooking_whenActiveExists() {
+    Booking booking = new Booking();
+    booking.setId(31L);
+    booking.setParkingId(8L);
+    booking.setUserId("user-1@example.com");
+    booking.setStartTime(Instant.now().minusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(1800));
+    booking.setStatus(BookingStatus.ACTIVE);
+    booking.setCreatedAt(Instant.now().minusSeconds(900));
+
+    when(
+            bookingRepository
+                .findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
+                    eq("user-1@example.com"),
+                    eq(BookingStatus.ACTIVE),
+                    any(Instant.class),
+                    any(Instant.class)))
+        .thenReturn(Optional.of(booking));
+
+    BookingResponse response = bookingService.getActiveUserBooking("user-1@example.com");
+
+    assertThat(response).isNotNull();
+    assertThat(response.id()).isEqualTo(31L);
+    assertThat(response.status()).isEqualTo(BookingStatus.ACTIVE);
+  }
+
+  @Test
+  void getActiveUserBooking_shouldReturnNull_whenNoActiveBooking() {
+    when(
+            bookingRepository
+                .findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
+                    eq("user-2@example.com"),
+                    eq(BookingStatus.ACTIVE),
+                    any(Instant.class),
+                    any(Instant.class)))
+        .thenReturn(Optional.empty());
+
+    BookingResponse response = bookingService.getActiveUserBooking("user-2@example.com");
+
+    assertThat(response).isNull();
+  }
+
+  @Test
+  void getActiveUserBooking_shouldThrow_whenUserIdBlank() {
+    assertThatThrownBy(() -> bookingService.getActiveUserBooking("   "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("userId is required");
+
+    verifyNoInteractions(bookingRepository);
   }
 
   @Test

@@ -20,6 +20,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -167,6 +168,45 @@ class BookingControllerTest {
     void getCurrentUserBookings_shouldReturnUnauthorized_whenUnauthenticated() throws Exception {
         mockMvc
                 .perform(get("/bookings"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getActiveBooking_shouldReturnBooking_whenExists() throws Exception {
+        BookingResponse activeBooking =
+                new BookingResponse(
+                        31L,
+                        8L,
+                        "user-1@example.com",
+                        Instant.now().minusSeconds(300),
+                        Instant.now().plusSeconds(1800),
+                        BookingStatus.ACTIVE,
+                        Instant.now().minusSeconds(600));
+
+        when(bookingService.getActiveUserBooking(anyString())).thenReturn(activeBooking);
+
+        mockMvc
+                .perform(get("/bookings/active"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(31))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+    }
+
+    @Test
+    void getActiveBooking_shouldReturnEmptyBody_whenNotFound() throws Exception {
+        when(bookingService.getActiveUserBooking(anyString())).thenReturn(null);
+
+        mockMvc
+                .perform(get("/bookings/active"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+    }
+
+    @Test
+    @WithAnonymousUser
+    void getActiveBooking_shouldReturnUnauthorized_whenUnauthenticated() throws Exception {
+        mockMvc
+                .perform(get("/bookings/active"))
                 .andExpect(status().isUnauthorized());
     }
 }

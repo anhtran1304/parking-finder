@@ -2,6 +2,7 @@ package com.parkingfinder.repository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
   Page<Booking> findByUserId(String userId, Pageable pageable);
 
   Page<Booking> findByUserIdAndStatus(String userId, BookingStatus status, Pageable pageable);
+
+  Optional<Booking>
+      findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
+          String userId, BookingStatus status, Instant startTime, Instant endTime);
 
   @Query(
       """

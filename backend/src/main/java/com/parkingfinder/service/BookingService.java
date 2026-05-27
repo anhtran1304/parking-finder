@@ -102,6 +102,20 @@ public class BookingService {
     return bookings.map(this::toResponse);
   }
 
+  @Transactional(readOnly = true)
+  public BookingResponse getActiveUserBooking(String userId) {
+    if (userId == null || userId.isBlank()) {
+      throw new IllegalArgumentException("userId is required");
+    }
+
+    Instant now = Instant.now();
+    return bookingRepository
+        .findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
+            userId, BookingStatus.ACTIVE, now, now)
+        .map(this::toResponse)
+        .orElse(null);
+  }
+
   private void validateBookingWindow(CreateBookingRequest request) {
     if (!request.endTime().isAfter(request.startTime())) {
       throw new IllegalArgumentException("endTime must be after startTime");
