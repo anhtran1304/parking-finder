@@ -1,15 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, signal, computed } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { catchError, finalize, of, tap } from 'rxjs';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { catchError, filter, finalize, of } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { AuthSessionService } from '../core/services/auth-session.service';
 import { BookingApiService } from '../core/services/booking-api.service';
 import { ParkingApiService } from '../core/services/parking-api.service';
-import { ParkingMapComponent } from '../features/parking/parking-map.component';
+import { AuthOverlayComponent } from '../features/auth/components/auth-overlay/auth-overlay.component';
+import type { AuthOverlayBookingContext, AuthOverlayMode } from '../features/auth/interfaces/auth-overlay.interface';
+import { DialogService } from '../shared/ui/dialog/dialog.service';
+import { ReservationDialogComponent, ReservationDialogResult } from '../shared/ui/dialog/reservation-dialog/reservation-dialog.component';
 import { CreateBookingRequest, ReservePayload } from '../models/booking.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { DetailPanelComponent } from './detail-panel.component';
 import { SidebarComponent } from './sidebar.component';
-import { environment } from '../../environments/environment';
+import { ParkingMapComponent } from '../features/parking/parking-map.component';
 
 export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
 type BookingFeedback = { type: 'success' | 'error'; message: string };
@@ -17,7 +23,13 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, SidebarComponent, ParkingMapComponent, DetailPanelComponent],
+  imports: [
+    CommonModule,
+    SidebarComponent,
+    ParkingMapComponent,
+    DetailPanelComponent,
+    AuthOverlayComponent,
+  ],
   template: `
     <div class="shell">
       <app-parking-map
@@ -49,13 +61,22 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
         *ngIf="selectedParking()"
         class="shell__detail"
         [parking]="selectedParking()"
-        [reserveDisabled]="bookingInFlight() || (selectedParking()?.availableSlots ?? 0) <= 0"
-        [reserveLoading]="bookingInFlight()"
-        [reserveLabel]="bookingInFlight() ? 'Reserving...' : 'Reserve Spot'"
-        (reserveClicked)="onReserve($event)"
+        [reserveDisabled]="(selectedParking()?.availableSlots ?? 0) <= 0"
+        [reserveLoading]="false"
+        reserveLabel="Reserve Spot"
+        (reserveClicked)="onReserveIntent($event)"
         (navigateClicked)="onNavigate($event)"
         (closeClicked)="onDeselect()"
       ></app-detail-panel>
+
+      <app-auth-overlay
+        *ngIf="authMode() as mode"
+        [mode]="mode"
+        [bookingContext]="authOverlayContext()"
+        (closed)="closeAuthOverlay()"
+        (modeChanged)="setAuthMode($event)"
+        (signedIn)="onAuthSuccess()"
+      ></app-auth-overlay>
 
       <div
         *ngIf="bookingFeedback() as feedback"
@@ -120,7 +141,7 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 20;
+        z-index: 50;
         width: min(420px, calc(100vw - 40px));
         padding: 12px 16px;
         border-radius: var(--radius-md);
@@ -173,52 +194,162 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
   ],
 })
 export class ShellComponent implements OnInit {
-  parkings = signal<NearbyParkingResponse[]>([]);
-  selectedParking = signal<NearbyParkingResponse | null>(null);
-  hoveredParkingId = signal<number | null>(null);
-  activeFilters = signal<ParkingFilter[]>([]);
-  searchQuery = signal('');
-  bookingInFlight = signal(false);
-  bookingFeedback = signal<BookingFeedback | null>(null);
+  private readonly dialogService = inject(DialogService);
 
-  filteredParkings = computed(() => {
+  readonly parkings = signal<NearbyParkingResponse[]>([]);
+  readonly selectedParking = signal<NearbyParkingResponse | null>(null);
+  readonly hoveredParkingId = signal<number | null>(null);
+  readonly activeFilters = signal<ParkingFilter[]>([]);
+  readonly searchQuery = signal('');
+  readonly bookingInFlight = signal(false);
+  readonly bookingFeedback = signal<BookingFeedback | null>(null);
+
+  readonly authMode = signal<AuthOverlayMode | null>(null);
+  readonly bookingDraft = signal<ReservePayload | null>(null);
+  readonly isAuthenticated = computed(() => !!this.authSessionService.getValidSession());
+
+  private readonly routeParkingId = signal<number | null>(null);
+  private readonly bookingRouteActive = signal(false);
+  readonly isBookingRoute = this.bookingRouteActive.asReadonly();
+
+  readonly filteredParkings = computed(() => {
     const all = this.parkings();
     const filters = this.activeFilters();
     const q = this.searchQuery().toLowerCase();
 
-    return all.filter((p) => {
-      if (q && !p.name.toLowerCase().includes(q)) return false;
-      for (const f of filters) {
-        if (f === 'available' && p.availableSlots <= 0) return false;
+    return all.filter((parking) => {
+      if (q && !parking.name.toLowerCase().includes(q)) {
+        return false;
       }
+
+      for (const filterValue of filters) {
+        if (filterValue === 'available' && parking.availableSlots <= 0) {
+          return false;
+        }
+      }
+
       return true;
     });
   });
 
+  readonly bookingDurationLabel = computed(() => {
+    const duration = this.bookingDraft()?.durationHours;
+    if (!duration) {
+      return '1 hour';
+    }
+    return duration === 24 ? '1 day' : `${duration} hours`;
+  });
+
+  readonly authOverlayContext = computed<AuthOverlayBookingContext | null>(() => {
+    const parking = this.selectedParking();
+    const draft = this.bookingDraft();
+
+    if (!parking || !draft) {
+      return null;
+    }
+
+    const hourlyRate = parking.hourlyRate ?? 2;
+    const estimatedTotal = hourlyRate * draft.durationHours;
+
+    return {
+      parkingName: parking.name,
+      locationLabel: this.buildLocationLabel(parking),
+      durationLabel: draft.durationHours === 24 ? '1 day' : `${draft.durationHours}h`,
+      hourlyRateLabel: `$${this.formatPrice(hourlyRate)}/h`,
+      estimatedTotalLabel: `~$${this.formatPrice(estimatedTotal)}`,
+    };
+  });
+
   constructor(
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
     private readonly parkingApiService: ParkingApiService,
-    private readonly bookingApiService: BookingApiService
-  ) {}
+    private readonly bookingApiService: BookingApiService,
+    private readonly authSessionService: AuthSessionService
+  ) {
+    effect(() => {
+      const parkingId = this.routeParkingId();
+      const allParkings = this.parkings();
+
+      if (parkingId === null) {
+        this.selectedParking.set(null);
+        return;
+      }
+
+      const matched = allParkings.find((item) => item.id === parkingId) ?? null;
+      this.selectedParking.set(matched);
+    });
+
+    effect(() => {
+      if (!this.isBookingRoute()) {
+        return;
+      }
+
+      const selected = this.selectedParking();
+      const draft = this.bookingDraft();
+      if (!selected) {
+        return;
+      }
+
+      if (!draft || draft.parkingId !== selected.id) {
+        this.bookingDraft.set({
+          parkingId: selected.id,
+          durationHours: draft?.durationHours ?? 1,
+        });
+      }
+    });
+  }
 
   ngOnInit(): void {
     const center = environment.defaultMapCenter;
     this.parkingApiService
       .getNearby(center.lat, center.lng, environment.defaultRadiusMeters)
-      .pipe(
-        catchError(() => of([])),
-        tap((data) => console.log('Fetched parkings:', data))
-      )
+      .pipe(catchError(() => of([])))
       .subscribe((data) => this.parkings.set(data));
+
+    this.route.paramMap.subscribe((params) => {
+      const rawParkingId = params.get('parkingId');
+      if (!rawParkingId) {
+        this.routeParkingId.set(null);
+        return;
+      }
+
+      const parsedId = Number(rawParkingId);
+      this.routeParkingId.set(Number.isFinite(parsedId) ? parsedId : null);
+    });
+
+    this.route.queryParamMap.subscribe((params) => {
+      const mode = params.get('auth');
+      this.authMode.set(mode === 'sign-in' || mode === 'sign-up' ? mode : null);
+    });
+
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe(() => this.syncRouteState());
+
+    this.syncRouteState();
   }
 
   onParkingSelected(parking: NearbyParkingResponse): void {
     this.selectedParking.set(parking);
     this.bookingFeedback.set(null);
+    this.bookingDraft.set(null);
+
+    void this.router.navigate(['/map', parking.id], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   onDeselect(): void {
-    this.selectedParking.set(null);
     this.bookingFeedback.set(null);
+    this.bookingDraft.set(null);
+    this.closeAuthOverlay(false);
+
+    void this.router.navigate(['/map'], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   onCardHovered(parking: NearbyParkingResponse): void {
@@ -237,26 +368,61 @@ export class ShellComponent implements OnInit {
     this.hoveredParkingId.set(null);
   }
 
-  onFilterToggle(filter: ParkingFilter): void {
+  onFilterToggle(filterValue: ParkingFilter): void {
     const current = this.activeFilters();
-    if (current.includes(filter)) {
-      this.activeFilters.set(current.filter((f) => f !== filter));
-    } else {
-      this.activeFilters.set([...current, filter]);
+    if (current.includes(filterValue)) {
+      this.activeFilters.set(current.filter((entry) => entry !== filterValue));
+      return;
     }
+    this.activeFilters.set([...current, filterValue]);
   }
 
   onSearch(query: string): void {
     this.searchQuery.set(query.trim());
   }
 
-  onReserve(payload: ReservePayload): void {
-    if (this.bookingInFlight()) return;
+  onReserveIntent(payload: ReservePayload): void {
+    const selected = this.selectedParking();
+    if (!selected) {
+      return;
+    }
 
-    const parking = this.selectedParking();
-    if (!parking) return;
+    if (selected.availableSlots <= 0) {
+      this.bookingFeedback.set({
+        type: 'error',
+        message: 'No slots are available for this parking.',
+      });
+      return;
+    }
 
-    if (parking.availableSlots <= 0) {
+    this.bookingFeedback.set(null);
+    this.bookingDraft.set(payload);
+
+    if (!this.authSessionService.getValidSession()) {
+      this.setAuthMode('sign-in');
+      return;
+    }
+
+    this.openBookingDialog();
+  }
+
+  confirmBooking(): void {
+    if (this.bookingInFlight()) {
+      return;
+    }
+
+    const selected = this.selectedParking();
+    const draft = this.bookingDraft();
+    if (!selected || !draft) {
+      return;
+    }
+
+    if (!this.authSessionService.getValidSession()) {
+      this.setAuthMode('sign-in');
+      return;
+    }
+
+    if (selected.availableSlots <= 0) {
       this.bookingFeedback.set({
         type: 'error',
         message: 'No slots are available for this parking.',
@@ -268,16 +434,8 @@ export class ShellComponent implements OnInit {
     this.bookingFeedback.set(null);
 
     this.bookingApiService
-      .createBooking(this.buildBookingRequest(payload))
+      .createBooking(this.buildBookingRequest(draft))
       .pipe(
-        tap((response) => {
-          this.applyBookedSlot(response.parkingId);
-          this.parkingApiService.evictParkingDetail(response.parkingId);
-          this.bookingFeedback.set({
-            type: 'success',
-            message: `Booking #${response.id} confirmed — ${payload.durationHours === 24 ? '1 day' : payload.durationHours + 'h'}.`,
-          });
-        }),
         catchError((error: HttpErrorResponse) => {
           this.bookingFeedback.set({
             type: 'error',
@@ -287,7 +445,81 @@ export class ShellComponent implements OnInit {
         }),
         finalize(() => this.bookingInFlight.set(false))
       )
-      .subscribe();
+      .subscribe((response) => {
+        if (!response) {
+          return;
+        }
+
+        const durationLabel = this.bookingDurationLabel();
+        this.applyBookedSlot(response.parkingId);
+        this.parkingApiService.evictParkingDetail(response.parkingId);
+        this.bookingDraft.set(null);
+        this.bookingFeedback.set({
+          type: 'success',
+          message: `Booking #${response.id} confirmed — ${durationLabel}.`,
+        });
+
+        void this.router.navigate(['/map', response.parkingId], {
+          queryParams: { auth: null, returnUrl: null },
+          queryParamsHandling: 'merge',
+        });
+      });
+  }
+
+  cancelBookingRoute(): void {
+    this.bookingDraft.set(null);
+    const selected = this.selectedParking();
+
+    if (selected) {
+      void this.router.navigate(['/map', selected.id], {
+        queryParamsHandling: 'merge',
+      });
+      return;
+    }
+
+    void this.router.navigate(['/map'], {
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onAuthSuccess(): void {
+    this.closeAuthOverlay();
+
+    if (this.bookingDraft()) {
+      this.openBookingDialog();
+    }
+  }
+
+  setAuthMode(mode: AuthOverlayMode): void {
+    this.authMode.set(mode);
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        auth: mode,
+        returnUrl: this.currentPath(),
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  closeAuthOverlay(clearQuery: boolean = true): void {
+    this.authMode.set(null);
+
+    if (!clearQuery) {
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        auth: null,
+        returnUrl: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   onNavigate(parking: NearbyParkingResponse): void {
@@ -297,13 +529,42 @@ export class ShellComponent implements OnInit {
     );
   }
 
+  private openBookingDialog(): void {
+    const selected = this.selectedParking();
+    if (!selected) {
+      return;
+    }
+
+    const ref = this.dialogService.open<ReservationDialogResult | undefined>({
+      title: 'Confirm reservation',
+      component: ReservationDialogComponent,
+      data: {
+        parkingName: selected.name,
+        hourlyRate: selected.hourlyRate ?? 2,
+        parkingId: selected.id,
+      },
+      backdrop: 'subtle',
+      position: 'center',
+      showClose: false,
+      closeOnBackdrop: true,
+    });
+
+    ref.afterClosed$.subscribe((result) => {
+      if (result?.confirmed) {
+        this.bookingDraft.set({ parkingId: selected.id, durationHours: result.durationHours });
+        this.confirmBooking();
+      } else {
+        this.bookingDraft.set(null);
+      }
+    });
+  }
+
   private buildBookingRequest(payload: ReservePayload): CreateBookingRequest {
     const startTime = new Date(Date.now() + 5 * 60 * 1000);
     const endTime = new Date(startTime.getTime() + payload.durationHours * 60 * 60 * 1000);
 
     return {
       parkingId: payload.parkingId,
-      userId: 'demo-user',
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
     };
@@ -311,19 +572,22 @@ export class ShellComponent implements OnInit {
 
   private applyBookedSlot(parkingId: number): void {
     let updatedSelection: NearbyParkingResponse | null = null;
-    const updatedParkings = this.parkings().map((parking) => {
-      if (parking.id !== parkingId) return parking;
 
-      const updated = {
+    const updated = this.parkings().map((parking) => {
+      if (parking.id !== parkingId) {
+        return parking;
+      }
+
+      const next = {
         ...parking,
         availableSlots: Math.max(parking.availableSlots - 1, 0),
         updatedAt: new Date().toISOString(),
       };
-      updatedSelection = updated;
-      return updated;
+      updatedSelection = next;
+      return next;
     });
 
-    this.parkings.set(updatedParkings);
+    this.parkings.set(updated);
     if (updatedSelection) {
       this.selectedParking.set(updatedSelection);
     }
@@ -334,9 +598,40 @@ export class ShellComponent implements OnInit {
     if (code === 'NO_AVAILABLE_SLOT' || error.status === 409) {
       return 'No slots are available for this parking.';
     }
+
+    if (error.status === 401) {
+      return 'Session expired. Please sign in again to continue.';
+    }
+
     if (code === 'BOOKING_RESERVATION_UNAVAILABLE' || error.status === 503) {
       return 'Booking reservation system unavailable. Please try again shortly.';
     }
+
     return error.error?.message ?? 'Booking failed. Please try again.';
+  }
+
+  private buildLocationLabel(parking: NearbyParkingResponse): string {
+    return `${this.formatDistance(parking.distanceMeters)} from your current map area`;
+  }
+
+  private formatDistance(distanceMeters: number): string {
+    if (distanceMeters >= 1000) {
+      return `${(distanceMeters / 1000).toFixed(1)} km`;
+    }
+    return `${distanceMeters} m`;
+  }
+
+  private formatPrice(value: number): string {
+    return Number.isInteger(value) ? `${value}` : value.toFixed(2);
+  }
+
+  private syncRouteState(): void {
+    const path = this.currentPath();
+    this.bookingRouteActive.set(/^\/map\/\d+\/booking$/.test(path));
+  }
+
+  private currentPath(): string {
+    const [path] = this.router.url.split('?');
+    return path || '/map';
   }
 }
