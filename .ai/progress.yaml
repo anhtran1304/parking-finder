@@ -106,20 +106,41 @@ phases:
       - id: active_booking_api
         status: done
         note: "GET /bookings/active returns current user's ACTIVE booking; empty result returns HTTP 200 with empty body"
+      - id: booking_detail_api
+        status: pending
+        note: "GET /bookings/{bookingId} returns booking detail scoped to authenticated principal"
+      - id: booking_ownership_hardening
+        status: pending
+        note: "Enforce ownership checks on booking by-id and cancel endpoints to prevent cross-user access"
+
     frontend_tasks:
       - id: sign_in_page
-        status: pending
+        status: done
+        note: "Map-persistent auth overlay implemented; /auth/sign-in kept as compatibility redirect to /map with modal intent"
       - id: sign_up_page
-        status: pending
+        status: done
+        note: "Sign-up mode added inside auth overlay with /auth/register integration and switch-back-to-sign-in flow"
       - id: auth_state_management
-        status: pending
-        note: "Auth service + HTTP interceptor + route guards"
+        status: in_progress
+        note: "Session service is active and booking API now sends bearer token; interceptor/guards still pending"
       - id: current_booking_view
         status: pending
         note: "Active booking banner showing parking name + remaining time"
       - id: booking_history_view
         status: pending
         note: "List of past bookings with status badges"
+      - id: map_shell_nested_routing
+        status: done
+        note: "Added /map, /map/:parkingId, /map/:parkingId/booking routes with persistent shell and route-driven state"
+      - id: booking_overlay_route
+        status: done
+        note: "Booking confirmation overlay now appears on /map/:parkingId/booking and keeps map mounted"
+      - id: auth_return_to_intent
+        status: in_progress
+        note: "Auth modal and /auth/* redirect preserve return path; booking resume is available through route state"
+      - id: mobile_desktop_overlay_parity
+        status: pending
+        note: "Same route/state, different presentation: desktop right drawer, mobile bottom sheet"
 
   phase_4_realtime:
     status: pending

@@ -7,7 +7,7 @@ export interface ReservePayload {
 
 export interface CreateBookingRequest {
   parkingId: number;
-  userId: string;
+  userId?: string;
   startTime: string;
   endTime: string;
 }

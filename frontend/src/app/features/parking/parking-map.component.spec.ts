@@ -32,7 +32,7 @@ describe('ParkingMapComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should map slot status to danger when no slots left', () => {
-    expect(component.badgeState(0)).toBe('danger');
+  it('should mark status as full when no slots left', () => {
+    expect((component as any).markerStatus(0)).toBe('full');
   });
 });

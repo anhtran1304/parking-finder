@@ -31,7 +31,7 @@ describe('ParkingDetailComponent', () => {
         userId: 'u',
         startTime: new Date().toISOString(),
         endTime: new Date().toISOString(),
-        status: 'CONFIRMED',
+        status: 'ACTIVE',
         createdAt: new Date().toISOString()
       })
     );
