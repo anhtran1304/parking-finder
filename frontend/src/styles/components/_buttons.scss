@@ -1,0 +1,25 @@
+// ═══════════════════════════════════════════════════════════════
+// BUTTONS -- Shared button primitives
+// ═══════════════════════════════════════════════════════════════
+
+// Mixin for the standard hover-lift effect used across all interactive surfaces
+@mixin hover-lift($shadow-default, $shadow-hover) {
+  box-shadow: $shadow-default;
+  transition:
+    transform var(--duration-fast) var(--ease-out-expo),
+    box-shadow var(--duration-fast) var(--ease-out-expo);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: $shadow-hover;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

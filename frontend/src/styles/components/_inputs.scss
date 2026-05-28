@@ -1,0 +1,48 @@
+// ═══════════════════════════════════════════════════════════════
+// INPUTS -- Shared input field primitives
+// ═══════════════════════════════════════════════════════════════
+
+// Mixin: standard field control container (icon + input + trailing action)
+@mixin field-control {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-default);
+  background: var(--color-bg-default);
+  padding: 0 var(--spacing-md);
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+
+  &:focus-within {
+    border-color: var(--color-primary-base);
+    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.08);
+  }
+}
+
+// Mixin: standard input element within a field-control
+@mixin field-input {
+  border: 0;
+  outline: none;
+  width: 100%;
+  min-height: 42px;
+  background: transparent;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+
+  &::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  // Autofill override — keeps surface stable
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 100px var(--color-bg-default) inset !important;
+    -webkit-text-fill-color: var(--color-text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+}

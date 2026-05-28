@@ -1,0 +1,18 @@
+// ═══════════════════════════════════════════════════════════════
+// CARDS -- Glass morphism surface mixins
+// ═══════════════════════════════════════════════════════════════
+
+@mixin glass-card($radius: var(--radius-xl), $padding: var(--spacing-2xl)) {
+  border-radius: $radius;
+  background: var(--glass-bg-solid);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: $padding;
+}
+
+@mixin glass-card-sm {
+  @include glass-card(var(--radius-lg), var(--spacing-lg));
+  box-shadow: var(--shadow-md);
+}
