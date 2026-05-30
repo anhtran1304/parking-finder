@@ -20,6 +20,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -233,4 +234,44 @@ class BookingControllerTest {
                 .perform(get("/bookings/active"))
                 .andExpect(status().isUnauthorized());
     }
+
+  @Test
+  void cancelBooking_shouldReturnOk_whenOwnerCancels() throws Exception {
+    BookingResponse response =
+        new BookingResponse(
+            10L,
+            1L,
+            "user-1@example.com",
+            Instant.now().minusSeconds(300),
+            Instant.now().plusSeconds(3300),
+            BookingStatus.CANCELLED,
+            Instant.now().minusSeconds(600));
+
+    when(bookingService.cancelBookingForUser(eq(10L), anyString())).thenReturn(response);
+
+    mockMvc
+        .perform(patch("/bookings/10/cancel").with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(10))
+        .andExpect(jsonPath("$.status").value("CANCELLED"));
+  }
+
+  @Test
+  void cancelBooking_shouldReturnNotFound_whenNotOwnedByCaller() throws Exception {
+    when(bookingService.cancelBookingForUser(eq(10L), anyString()))
+        .thenThrow(new com.parkingfinder.exception.ResourceNotFoundException("Booking not found: 10"));
+
+    mockMvc
+        .perform(patch("/bookings/10/cancel").with(csrf()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.message").value("Booking not found: 10"));
+  }
+
+  @Test
+  @WithAnonymousUser
+  void cancelBooking_shouldReturnUnauthorized_whenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(patch("/bookings/10/cancel").with(csrf()))
+        .andExpect(status().isUnauthorized());
+  }
 }

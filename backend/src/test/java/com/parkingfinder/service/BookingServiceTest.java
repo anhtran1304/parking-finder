@@ -295,7 +295,7 @@ class BookingServiceTest {
     when(bookingRepository.findById(10L)).thenReturn(Optional.of(booking));
     when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-    BookingResponse response = bookingService.cancelBooking(10L);
+    BookingResponse response = bookingService.cancelBookingForUser(10L, "user-1");
 
     assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
     verify(slotCounterService).releaseSlot(1L);
@@ -315,7 +315,7 @@ class BookingServiceTest {
     when(bookingRepository.findById(11L)).thenReturn(Optional.of(booking));
     when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
 
-    BookingResponse response = bookingService.cancelBooking(11L);
+    BookingResponse response = bookingService.cancelBookingForUser(11L, "user-2");
 
     assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
     verify(slotCounterService).releaseSlot(2L);
@@ -326,11 +326,12 @@ class BookingServiceTest {
     Booking booking = new Booking();
     booking.setId(12L);
     booking.setParkingId(1L);
+    booking.setUserId("user-12");
     booking.setStatus(BookingStatus.COMPLETED);
 
     when(bookingRepository.findById(12L)).thenReturn(Optional.of(booking));
 
-    assertThatThrownBy(() -> bookingService.cancelBooking(12L))
+    assertThatThrownBy(() -> bookingService.cancelBookingForUser(12L, "user-12"))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("COMPLETED");
 
@@ -405,5 +406,52 @@ class BookingServiceTest {
         .hasMessageContaining("51");
 
     verify(parkingRepository, never()).findById(any());
+  }
+
+  @Test
+  void cancelBookingForUser_shouldCancel_whenOwnerCancels() {
+    Booking booking = new Booking();
+    booking.setId(60L);
+    booking.setParkingId(5L);
+    booking.setUserId("owner@example.com");
+    booking.setStatus(BookingStatus.ACTIVE);
+    booking.setStartTime(Instant.now().minusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(3300));
+    booking.setCreatedAt(Instant.now().minusSeconds(600));
+
+    when(bookingRepository.findById(60L)).thenReturn(Optional.of(booking));
+    when(bookingRepository.save(any(Booking.class))).thenReturn(booking);
+
+    BookingResponse response = bookingService.cancelBookingForUser(60L, "owner@example.com");
+
+    assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
+    verify(slotCounterService).releaseSlot(5L);
+  }
+
+  @Test
+  void cancelBookingForUser_shouldThrow_whenBookingNotFound() {
+    when(bookingRepository.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> bookingService.cancelBookingForUser(99L, "user@example.com"))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("99");
+  }
+
+  @Test
+  void cancelBookingForUser_shouldThrow_whenCallerDoesNotOwnBooking() {
+    Booking booking = new Booking();
+    booking.setId(61L);
+    booking.setParkingId(6L);
+    booking.setUserId("owner@example.com");
+    booking.setStatus(BookingStatus.ACTIVE);
+
+    when(bookingRepository.findById(61L)).thenReturn(Optional.of(booking));
+
+    assertThatThrownBy(() -> bookingService.cancelBookingForUser(61L, "other@example.com"))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("61");
+
+    verify(bookingRepository, never()).save(any());
+    verify(slotCounterService, never()).releaseSlot(any());
   }
 }
