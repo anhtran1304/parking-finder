@@ -186,10 +186,15 @@ public class BookingController {
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
       @ApiResponse(
         responseCode = "404",
-        description = "Booking not found",
+        description = "Booking not found or not owned by caller",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-  public BookingResponse cancelBooking(@PathVariable Long id) {
-    return bookingService.cancelBooking(id);
+  public BookingResponse cancelBooking(
+      @PathVariable Long id,
+      @AuthenticationPrincipal UserDetails userDetails) {
+    if (userDetails == null) {
+      throw new IllegalStateException("Authenticated user is required");
+    }
+    return bookingService.cancelBookingForUser(id, userDetails.getUsername());
   }
 }

@@ -187,10 +187,11 @@ public class BookingService {
   }
 
   @Transactional
-  public BookingResponse cancelBooking(Long bookingId) {
+  public BookingResponse cancelBookingForUser(Long bookingId, String userId) {
     Booking booking =
         bookingRepository
             .findById(bookingId)
+            .filter(b -> b.getUserId().equals(userId))
             .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
 
     if (booking.getStatus() != BookingStatus.PENDING
