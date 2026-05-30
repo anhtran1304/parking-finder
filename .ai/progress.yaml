@@ -110,8 +110,8 @@ phases:
         status: done
         note: "GET /bookings/{bookingId} returns enriched BookingDetailResponse (parkingName, address) scoped to authenticated principal; 404 for both not-found and wrong-owner"
       - id: booking_ownership_hardening
-        status: pending
-        note: "Enforce ownership checks on booking by-id and cancel endpoints to prevent cross-user access"
+        status: done
+        note: "cancelBooking renamed to cancelBookingForUser(Long, String); ownership enforced via .filter(b -> b.getUserId().equals(userId)) before orElseThrow; controller passes @AuthenticationPrincipal username; 404 returned for both not-found and wrong-owner to prevent ID enumeration"
 
     frontend_tasks:
       - id: sign_in_page
