@@ -1,0 +1,16 @@
+package com.parkingfinder.dto;
+
+import java.time.Instant;
+
+import com.parkingfinder.domain.BookingStatus;
+
+public record BookingDetailResponse(
+    Long id,
+    Long parkingId,
+    String parkingName,
+    String parkingAddress,
+    String userId,
+    Instant startTime,
+    Instant endTime,
+    BookingStatus status,
+    Instant createdAt) {}

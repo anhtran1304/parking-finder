@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.parkingfinder.domain.Booking;
 import com.parkingfinder.domain.BookingStatus;
 import com.parkingfinder.domain.Parking;
+import com.parkingfinder.dto.BookingDetailResponse;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
@@ -84,6 +85,30 @@ public class BookingService {
             .findById(bookingId)
             .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
     return toResponse(booking);
+  }
+
+  @Transactional(readOnly = true)
+  public BookingDetailResponse getByIdForUser(Long bookingId, String userId) {
+    Booking booking =
+        bookingRepository
+            .findById(bookingId)
+            .filter(b -> b.getUserId().equals(userId))
+            .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+    Parking parking = parkingRepository.findById(booking.getParkingId()).orElse(null);
+    String parkingName = parking != null ? parking.getName() : "";
+    String parkingAddress = parking != null ? parking.getAddress() : "";
+
+    return new BookingDetailResponse(
+        booking.getId(),
+        booking.getParkingId(),
+        parkingName,
+        parkingAddress,
+        booking.getUserId(),
+        booking.getStartTime(),
+        booking.getEndTime(),
+        booking.getStatus(),
+        booking.getCreatedAt());
   }
 
   @Transactional(readOnly = true)

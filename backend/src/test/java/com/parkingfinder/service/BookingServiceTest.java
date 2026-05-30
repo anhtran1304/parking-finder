@@ -29,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 import com.parkingfinder.domain.Booking;
 import com.parkingfinder.domain.BookingStatus;
 import com.parkingfinder.domain.Parking;
+import com.parkingfinder.dto.BookingDetailResponse;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
@@ -345,10 +346,64 @@ class BookingServiceTest {
     Parking parking = new Parking();
     parking.setId(id);
     parking.setName("Parking " + id);
+    parking.setAddress("123 Test St");
     parking.setLocation(point);
     parking.setTotalSlots(totalSlots);
     parking.setAvailableSlots(availableSlots);
     parking.setUpdatedAt(Instant.now());
     return parking;
+  }
+
+  @Test
+  void getByIdForUser_shouldReturnEnrichedDetail_whenOwnerRequests() {
+    Booking booking = new Booking();
+    booking.setId(50L);
+    booking.setParkingId(3L);
+    booking.setUserId("owner@example.com");
+    booking.setStartTime(Instant.now().plusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(3900));
+    booking.setStatus(BookingStatus.PENDING);
+    booking.setCreatedAt(Instant.now());
+
+    Parking parking = parking(3L, 5, 4);
+
+    when(bookingRepository.findById(50L)).thenReturn(Optional.of(booking));
+    when(parkingRepository.findById(3L)).thenReturn(Optional.of(parking));
+
+    BookingDetailResponse response = bookingService.getByIdForUser(50L, "owner@example.com");
+
+    assertThat(response.id()).isEqualTo(50L);
+    assertThat(response.parkingName()).isEqualTo("Parking 3");
+    assertThat(response.parkingAddress()).isEqualTo("123 Test St");
+    assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
+  }
+
+  @Test
+  void getByIdForUser_shouldThrow_whenBookingNotFound() {
+    when(bookingRepository.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> bookingService.getByIdForUser(99L, "user@example.com"))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("99");
+  }
+
+  @Test
+  void getByIdForUser_shouldThrow_whenCallerDoesNotOwnBooking() {
+    Booking booking = new Booking();
+    booking.setId(51L);
+    booking.setParkingId(4L);
+    booking.setUserId("owner@example.com");
+    booking.setStartTime(Instant.now().plusSeconds(300));
+    booking.setEndTime(Instant.now().plusSeconds(3900));
+    booking.setStatus(BookingStatus.PENDING);
+    booking.setCreatedAt(Instant.now());
+
+    when(bookingRepository.findById(51L)).thenReturn(Optional.of(booking));
+
+    assertThatThrownBy(() -> bookingService.getByIdForUser(51L, "attacker@example.com"))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessageContaining("51");
+
+    verify(parkingRepository, never()).findById(any());
   }
 }

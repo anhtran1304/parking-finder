@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.parkingfinder.domain.BookingStatus;
 import com.parkingfinder.dto.ApiErrorResponse;
+import com.parkingfinder.dto.BookingDetailResponse;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.service.BookingService;
@@ -142,23 +143,28 @@ public class BookingController {
   @GetMapping("/{id}")
     @Operation(
       summary = "Get booking detail",
-      description = "Get booking detail by booking id")
+      description = "Get booking detail by ID, scoped to the authenticated user")
     @ApiResponses({
       @ApiResponse(
         responseCode = "200",
         description = "Booking found",
-        content = @Content(schema = @Schema(implementation = BookingResponse.class))),
+        content = @Content(schema = @Schema(implementation = BookingDetailResponse.class))),
       @ApiResponse(
         responseCode = "401",
         description = "Unauthorized",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))),
       @ApiResponse(
         responseCode = "404",
-        description = "Booking not found",
+        description = "Booking not found or not owned by caller",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-  public BookingResponse getById(@PathVariable Long id) {
-    return bookingService.getById(id);
+  public BookingDetailResponse getById(
+      @PathVariable Long id,
+      @AuthenticationPrincipal UserDetails userDetails) {
+    if (userDetails == null) {
+      throw new IllegalStateException("Authenticated user is required");
+    }
+    return bookingService.getByIdForUser(id, userDetails.getUsername());
   }
 
   @PatchMapping("/{id}/cancel")

@@ -107,8 +107,8 @@ phases:
         status: done
         note: "GET /bookings/active returns current user's ACTIVE booking; empty result returns HTTP 200 with empty body"
       - id: booking_detail_api
-        status: pending
-        note: "GET /bookings/{bookingId} returns booking detail scoped to authenticated principal"
+        status: done
+        note: "GET /bookings/{bookingId} returns enriched BookingDetailResponse (parkingName, address) scoped to authenticated principal; 404 for both not-found and wrong-owner"
       - id: booking_ownership_hardening
         status: pending
         note: "Enforce ownership checks on booking by-id and cancel endpoints to prevent cross-user access"

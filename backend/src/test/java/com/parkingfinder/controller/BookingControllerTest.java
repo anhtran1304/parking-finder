@@ -6,6 +6,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -26,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.parkingfinder.domain.BookingStatus;
+import com.parkingfinder.dto.BookingDetailResponse;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
@@ -94,24 +96,46 @@ class BookingControllerTest {
   }
 
   @Test
-  void getBooking_shouldReturnBookingDetail() throws Exception {
-    BookingResponse response =
-        new BookingResponse(
+  void getBooking_shouldReturnEnrichedDetail_whenOwnerRequests() throws Exception {
+    BookingDetailResponse response =
+        new BookingDetailResponse(
             9L,
             2L,
-            "user-9",
+            "Central Parking",
+            "45 Le Loi St",
+            "user-1@example.com",
             Instant.now().plusSeconds(300),
             Instant.now().plusSeconds(1200),
             BookingStatus.ACTIVE,
             Instant.now());
 
-    when(bookingService.getById(9L)).thenReturn(response);
+    when(bookingService.getByIdForUser(eq(9L), anyString())).thenReturn(response);
 
     mockMvc
         .perform(get("/bookings/9"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(9))
-        .andExpect(jsonPath("$.parkingId").value(2));
+        .andExpect(jsonPath("$.parkingName").value("Central Parking"))
+        .andExpect(jsonPath("$.parkingAddress").value("45 Le Loi St"));
+  }
+
+  @Test
+  void getBooking_shouldReturnNotFound_whenNotOwnedByCaller() throws Exception {
+    when(bookingService.getByIdForUser(eq(51L), anyString()))
+        .thenThrow(new com.parkingfinder.exception.ResourceNotFoundException("Booking not found: 51"));
+
+    mockMvc
+        .perform(get("/bookings/51"))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.message").value("Booking not found: 51"));
+  }
+
+  @Test
+  @WithAnonymousUser
+  void getBooking_shouldReturnUnauthorized_whenUnauthenticated() throws Exception {
+    mockMvc
+        .perform(get("/bookings/9"))
+        .andExpect(status().isUnauthorized());
   }
 
     @Test
