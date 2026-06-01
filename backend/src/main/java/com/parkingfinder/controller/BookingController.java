@@ -121,19 +121,19 @@ public class BookingController {
       @ApiResponse(
         responseCode = "200",
         description = "Active booking returned, or empty body when no active booking exists",
-        content = @Content(schema = @Schema(implementation = BookingResponse.class))),
+        content = @Content(schema = @Schema(implementation = BookingDetailResponse.class))),
       @ApiResponse(
         responseCode = "401",
         description = "Unauthorized",
         content = @Content(schema = @Schema(implementation = ApiErrorResponse.class)))
     })
-  public ResponseEntity<BookingResponse> getActiveBooking(
+  public ResponseEntity<BookingDetailResponse> getActiveBooking(
       @AuthenticationPrincipal UserDetails userDetails) {
     if (userDetails == null) {
       throw new IllegalStateException("Authenticated user is required");
     }
 
-    BookingResponse activeBooking = bookingService.getActiveUserBooking(userDetails.getUsername());
+    BookingDetailResponse activeBooking = bookingService.getActiveUserBooking(userDetails.getUsername());
     if (activeBooking == null) {
       return ResponseEntity.ok().build();
     }

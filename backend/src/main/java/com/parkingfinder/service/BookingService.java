@@ -95,20 +95,7 @@ public class BookingService {
             .filter(b -> b.getUserId().equals(userId))
             .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
 
-    Parking parking = parkingRepository.findById(booking.getParkingId()).orElse(null);
-    String parkingName = parking != null ? parking.getName() : "";
-    String parkingAddress = parking != null ? parking.getAddress() : "";
-
-    return new BookingDetailResponse(
-        booking.getId(),
-        booking.getParkingId(),
-        parkingName,
-        parkingAddress,
-        booking.getUserId(),
-        booking.getStartTime(),
-        booking.getEndTime(),
-        booking.getStatus(),
-        booking.getCreatedAt());
+    return toDetailResponse(booking);
   }
 
   @Transactional(readOnly = true)
@@ -128,7 +115,7 @@ public class BookingService {
   }
 
   @Transactional(readOnly = true)
-  public BookingResponse getActiveUserBooking(String userId) {
+  public BookingDetailResponse getActiveUserBooking(String userId) {
     if (userId == null || userId.isBlank()) {
       throw new IllegalArgumentException("userId is required");
     }
@@ -137,7 +124,7 @@ public class BookingService {
     return bookingRepository
         .findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
             userId, BookingStatus.ACTIVE, now, now)
-        .map(this::toResponse)
+        .map(this::toDetailResponse)
         .orElse(null);
   }
 
@@ -185,6 +172,24 @@ public class BookingService {
         booking.getStatus(),
         booking.getCreatedAt());
   }
+
+        private BookingDetailResponse toDetailResponse(Booking booking) {
+          Parking parking = parkingRepository.findById(booking.getParkingId()).orElse(null);
+          String parkingName = parking != null ? parking.getName() : "";
+          String parkingAddress = parking != null ? parking.getAddress() : "";
+
+          return new BookingDetailResponse(
+          booking.getId(),
+          booking.getParkingId(),
+          parkingName,
+          parkingAddress,
+          parking != null ? parking.getHourlyRate() : null,
+          booking.getUserId(),
+          booking.getStartTime(),
+          booking.getEndTime(),
+          booking.getStatus(),
+          booking.getCreatedAt());
+        }
 
   @Transactional
   public BookingResponse cancelBookingForUser(Long bookingId, String userId) {

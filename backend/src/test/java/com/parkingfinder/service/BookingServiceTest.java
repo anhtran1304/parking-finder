@@ -1,5 +1,6 @@
 package com.parkingfinder.service;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -249,10 +250,16 @@ class BookingServiceTest {
                     any(Instant.class)))
         .thenReturn(Optional.of(booking));
 
-    BookingResponse response = bookingService.getActiveUserBooking("user-1@example.com");
+    Parking parking = parking(8L, 8, 5);
+    when(parkingRepository.findById(8L)).thenReturn(Optional.of(parking));
+
+    BookingDetailResponse response = bookingService.getActiveUserBooking("user-1@example.com");
 
     assertThat(response).isNotNull();
     assertThat(response.id()).isEqualTo(31L);
+    assertThat(response.parkingName()).isEqualTo("Parking 8");
+    assertThat(response.parkingAddress()).isEqualTo("123 Test St");
+    assertThat(response.hourlyRate()).isEqualByComparingTo(BigDecimal.valueOf(4));
     assertThat(response.status()).isEqualTo(BookingStatus.ACTIVE);
   }
 
@@ -267,7 +274,7 @@ class BookingServiceTest {
                     any(Instant.class)))
         .thenReturn(Optional.empty());
 
-    BookingResponse response = bookingService.getActiveUserBooking("user-2@example.com");
+    BookingDetailResponse response = bookingService.getActiveUserBooking("user-2@example.com");
 
     assertThat(response).isNull();
   }
@@ -351,6 +358,7 @@ class BookingServiceTest {
     parking.setLocation(point);
     parking.setTotalSlots(totalSlots);
     parking.setAvailableSlots(availableSlots);
+    parking.setHourlyRate(BigDecimal.valueOf(4));
     parking.setUpdatedAt(Instant.now());
     return parking;
   }
@@ -376,6 +384,7 @@ class BookingServiceTest {
     assertThat(response.id()).isEqualTo(50L);
     assertThat(response.parkingName()).isEqualTo("Parking 3");
     assertThat(response.parkingAddress()).isEqualTo("123 Test St");
+    assertThat(response.hourlyRate()).isEqualByComparingTo(BigDecimal.valueOf(4));
     assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
   }
 

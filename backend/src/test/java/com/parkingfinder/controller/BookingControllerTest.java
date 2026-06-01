@@ -1,5 +1,6 @@
 package com.parkingfinder.controller;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
@@ -104,6 +105,7 @@ class BookingControllerTest {
             2L,
             "Central Parking",
             "45 Le Loi St",
+            BigDecimal.valueOf(4),
             "user-1@example.com",
             Instant.now().plusSeconds(300),
             Instant.now().plusSeconds(1200),
@@ -198,10 +200,13 @@ class BookingControllerTest {
 
     @Test
     void getActiveBooking_shouldReturnBooking_whenExists() throws Exception {
-        BookingResponse activeBooking =
-                new BookingResponse(
+        BookingDetailResponse activeBooking =
+            new BookingDetailResponse(
                         31L,
                         8L,
+                "Opera House Parking",
+                "7 Lam Son Square",
+                BigDecimal.valueOf(5),
                         "user-1@example.com",
                         Instant.now().minusSeconds(300),
                         Instant.now().plusSeconds(1800),
@@ -214,6 +219,9 @@ class BookingControllerTest {
                 .perform(get("/bookings/active"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(31))
+                .andExpect(jsonPath("$.parkingName").value("Opera House Parking"))
+                .andExpect(jsonPath("$.parkingAddress").value("7 Lam Son Square"))
+                .andExpect(jsonPath("$.hourlyRate").value(5))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
