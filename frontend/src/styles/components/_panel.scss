@@ -1,0 +1,86 @@
+// ═══════════════════════════════════════════════════════════════
+// PANEL COMPONENT CLASSES
+// Shared contract for right-side panels and future modal panels
+// ═══════════════════════════════════════════════════════════════
+
+@layer components {
+  .pf-panel-header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    background: var(--color-bg-default);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .pf-panel-header--block {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-lg);
+  }
+
+  .pf-header-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-2xs);
+  }
+
+  .pf-panel-title {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-tight);
+  }
+
+  .pf-panel-subtitle {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    line-height: var(--leading-tight);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pf-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+  }
+
+  .pf-panel-body--spacious {
+    gap: var(--spacing-2xl);
+    padding: var(--spacing-2xl);
+  }
+
+  .pf-panel-footer {
+    flex-shrink: 0;
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg);
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--glass-bg-solid);
+  }
+
+  @media (max-width: 767px) {
+    .pf-panel-header,
+    .pf-panel-body,
+    .pf-panel-body--spacious {
+      padding-left: var(--spacing-lg);
+      padding-right: var(--spacing-lg);
+    }
+
+    .pf-panel-body--spacious {
+      gap: var(--spacing-xl);
+      padding-top: var(--spacing-lg);
+      padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+    }
+
+    .pf-panel-footer {
+      padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+    }
+  }
+}

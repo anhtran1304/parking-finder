@@ -1,0 +1,57 @@
+// ═══════════════════════════════════════════════════════════════
+// INTERACTION UTILITIES
+// Small reusable controls and interaction states
+// ═══════════════════════════════════════════════════════════════
+
+@layer utilities {
+  .pf-icon-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 6px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition:
+      background var(--duration-fast) ease,
+      color var(--duration-fast) ease,
+      box-shadow var(--duration-fast) ease,
+      transform var(--duration-fast) ease;
+  }
+
+  .pf-icon-button:hover {
+    background: var(--overlay-hover);
+    color: var(--color-text-primary);
+  }
+
+  .pf-icon-button:focus-visible {
+    outline: 0;
+    box-shadow: var(--focus-ring);
+  }
+
+  .pf-icon-button--subtle {
+    color: var(--color-text-tertiary);
+  }
+
+  .pf-icon-button--subtle:hover {
+    background: var(--overlay-subtle);
+    color: var(--color-text-secondary);
+  }
+
+  .pf-hover-lift {
+    transition:
+      box-shadow var(--duration-fast) ease,
+      transform var(--duration-fast) ease,
+      background var(--duration-fast) ease;
+  }
+
+  .pf-hover-lift:hover {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
+  }
+}

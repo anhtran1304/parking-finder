@@ -62,14 +62,14 @@ export interface ReservationDialogResult {
         <div class="reservation__actions">
           <button
             type="button"
-            class="reservation__btn reservation__btn--secondary"
+            class="pf-button pf-button--secondary"
             (click)="onClose()"
           >
             Cancel
           </button>
           <button
             type="button"
-            class="reservation__btn reservation__btn--primary"
+            class="pf-button pf-button--primary"
             (click)="onConfirm()"
           >
             Confirm Reservation
@@ -117,7 +117,7 @@ export interface ReservationDialogResult {
       }
 
       .reservation__close:hover {
-        background: rgba(0, 0, 0, 0.05);
+        background: var(--overlay-hover);
         color: var(--color-text-primary);
       }
 
@@ -190,39 +190,6 @@ export interface ReservationDialogResult {
         padding-top: var(--spacing-sm);
       }
 
-      .reservation__btn {
-        min-height: 42px;
-        border-radius: var(--radius-md);
-        font-size: var(--font-size-sm);
-        font-weight: var(--font-weight-semibold);
-        cursor: pointer;
-        transition:
-          transform var(--duration-fast) var(--ease-out-expo),
-          box-shadow var(--duration-fast) var(--ease-out-expo);
-      }
-
-      .reservation__btn--secondary {
-        border: 1px solid var(--color-border-default);
-        background: var(--color-bg-default);
-        color: var(--color-text-primary);
-      }
-
-      .reservation__btn--secondary:hover {
-        box-shadow: var(--shadow-xs);
-        transform: translateY(-1px);
-      }
-
-      .reservation__btn--primary {
-        border: 0;
-        background: linear-gradient(135deg, var(--color-primary-base), var(--color-primary-hover));
-        color: var(--color-text-inverse);
-        box-shadow: var(--shadow-primary-sm);
-      }
-
-      .reservation__btn--primary:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-primary-md);
-      }
     `,
   ],
 })

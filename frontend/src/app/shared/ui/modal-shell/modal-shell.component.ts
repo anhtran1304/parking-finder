@@ -25,7 +25,7 @@ import { IconComponent } from '../../components/icon.component';
       <div class="modal__surface" [class]="'modal__surface--' + size">
         <button
           *ngIf="showClose"
-          class="modal__close"
+          class="pf-icon-button modal__close"
           type="button"
           (click)="closed.emit()"
           aria-label="Close dialog"
@@ -102,23 +102,6 @@ import { IconComponent } from '../../components/icon.component';
         position: absolute;
         top: var(--spacing-lg);
         right: var(--spacing-lg);
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        border-radius: var(--radius-full);
-        background: transparent;
-        color: var(--color-text-secondary);
-        cursor: pointer;
-        padding: 6px;
-        transition: all var(--duration-fast) ease;
-      }
-
-      .modal__close:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--color-text-primary);
       }
 
       /* Responsive bottom-sheet on mobile */

@@ -7,17 +7,24 @@
 @use "tailwindcss";
 
 // --- Design Tokens (Tailwind @theme) ---
-@import "base/theme";
+@use "base/theme";
 
 // --- Base Layer ---
-@import "base/reset";
-@import "base/globals";
-@import "base/animations";
+@use "base/reset";
+@use "base/globals";
+@use "base/animations";
 
 // --- Global Component Styles ---
 // (Only styles that MUST be global -- Leaflet renders outside Angular)
-@import "components/leaflet";
-@import "components/markers";
+@use "components/leaflet";
+@use "components/markers";
+@use "components/buttons";
+@use "components/inputs";
+@use "components/panel";
+@use "components/feedback";
 
 // --- Utilities ---
-@import "utilities/scrollbar";
+@use "utilities/layout";
+@use "utilities/text";
+@use "utilities/interaction";
+@use "utilities/scrollbar";

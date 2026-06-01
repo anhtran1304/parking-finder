@@ -1,0 +1,73 @@
+// ═══════════════════════════════════════════════════════════════
+// FEEDBACK COMPONENT CLASSES
+// Empty states and loading skeleton primitives
+// ═══════════════════════════════════════════════════════════════
+
+@layer components {
+  .pf-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-2xl) var(--spacing-lg);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-default);
+    color: var(--color-text-tertiary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+  }
+
+  .pf-empty-state--plain {
+    padding: var(--spacing-lg);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .pf-skeleton-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+
+  .pf-skeleton-line,
+  .pf-skeleton-block {
+    border-radius: var(--radius-md);
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-subtle) 25%,
+      var(--color-border-subtle) 50%,
+      var(--color-bg-subtle) 75%
+    );
+    background-size: 200% 100%;
+    animation: pf-shimmer 1.4s infinite;
+  }
+
+  .pf-skeleton-line {
+    width: 65%;
+    height: 14px;
+  }
+
+  .pf-skeleton-line--wide {
+    width: 90%;
+  }
+
+  .pf-skeleton-block {
+    min-height: 86px;
+  }
+
+  .pf-skeleton-block--tall {
+    min-height: 142px;
+  }
+}
+
+@keyframes pf-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}

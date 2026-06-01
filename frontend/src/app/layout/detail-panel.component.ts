@@ -4,6 +4,7 @@ import { ReservePayload } from '../models/booking.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { ButtonComponent } from '../shared/components/button.component';
 import { IconComponent } from '../shared/components/icon.component';
+import { PanelShellComponent } from '../shared/ui/panel-shell/panel-shell.component';
 
 interface AmenityItem {
   icon: string;
@@ -83,11 +84,11 @@ const ABOUT_MAP: Record<string, string> = {
 @Component({
   selector: 'app-detail-panel',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, IconComponent],
+  imports: [CommonModule, ButtonComponent, IconComponent, PanelShellComponent],
   template: `
-    <aside class="panel" *ngIf="parking">
+    <app-panel-shell *ngIf="parking" ariaLabel="Parking details" surface="glass" scrollbar="hidden">
       <!-- --- HEADER (pinned) --- -->
-      <div class="panel__header">
+      <div panelHeader class="panel__header">
         <div class="panel__header-row">
           <div class="panel__header-left">
             <h2 class="panel__name">{{ parking.name }}</h2>
@@ -99,14 +100,14 @@ const ABOUT_MAP: Record<string, string> = {
               <span class="panel__rating-count">({{ parking.reviewCount || 0 }} reviews)</span>
             </div>
           </div>
-          <button class="panel__close" (click)="closeClicked.emit()" aria-label="Close">
+          <button class="pf-icon-button" (click)="closeClicked.emit()" aria-label="Close">
             <app-icon name="x" [size]="20" [strokeWidth]="2" />
           </button>
         </div>
       </div>
 
       <!-- --- MEDIA (pinned, never shrinks) --- -->
-      <div class="panel__media-wrapper">
+      <div panelMedia class="panel__media-wrapper">
       <div class="panel__media">
         <!-- Placeholder shown when no images -->
         <div class="panel__media-placeholder" *ngIf="images.length === 0">
@@ -145,7 +146,7 @@ const ABOUT_MAP: Record<string, string> = {
       </div>
 
       <!-- --- BODY (scrollable) --- -->
-      <div class="panel__body">
+      <div panelBody class="panel__body">
         <!-- Status badges -->
         <div class="panel__badges">
           <span class="panel__badge" [ngClass]="'panel__badge--' + availabilityStatus">
@@ -199,7 +200,7 @@ const ABOUT_MAP: Record<string, string> = {
       </div>
 
       <!-- --- ACTIONS (pinned footer) --- -->
-      <div class="panel__actions">
+      <div panelFooter class="panel__actions">
         <div class="panel__cta-row">
           <app-button variant="secondary" (click)="onNavigateClicked()">
             <app-icon name="navigation" [size]="16" [strokeWidth]="2" />
@@ -215,26 +216,15 @@ const ABOUT_MAP: Record<string, string> = {
           </app-button>
         </div>
       </div>
-    </aside>
+    </app-panel-shell>
   `,
   styles: [
     `
       :host {
         display: block;
-      }
-
-      .panel {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        max-height: calc(100vh - 40px);
-        background: var(--glass-bg);
-        backdrop-filter: blur(var(--glass-blur));
-        -webkit-backdrop-filter: blur(var(--glass-blur));
-        border: 1px solid var(--glass-border);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-float);
-        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
       }
 
       /* --- Header (pinned top) --- */
@@ -268,24 +258,6 @@ const ABOUT_MAP: Record<string, string> = {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-      }
-
-      .panel__close {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: var(--radius-full);
-        color: var(--color-text-secondary);
-        transition: all var(--duration-fast) ease;
-        padding: 6px;
-        flex-shrink: 0;
-      }
-
-      .panel__close:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--color-text-primary);
       }
 
       /* --- Rating --- */
@@ -448,18 +420,11 @@ const ABOUT_MAP: Record<string, string> = {
 
       /* --- Body (scrollable middle) --- */
       .panel__body {
-        flex: 1;
-        overflow-y: auto;
         scroll-behavior: smooth;
         padding: 0 var(--spacing-2xl) var(--spacing-xl);
         display: flex;
         flex-direction: column;
         gap: var(--spacing-lg);
-        scrollbar-width: none;
-      }
-
-      .panel__body::-webkit-scrollbar {
-        display: none;
       }
 
       /* --- Badges --- */
@@ -632,9 +597,37 @@ const ABOUT_MAP: Record<string, string> = {
         display: block;
       }
 
-      .panel__cta-row app-button ::ng-deep .btn {
+      .panel__cta-row app-button ::ng-deep .pf-button {
         width: 100%;
         justify-content: center;
+      }
+
+      @media (max-width: 767px) {
+        .panel__header {
+          padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+        }
+
+        .panel__media-wrapper {
+          padding: 0 var(--spacing-lg) var(--spacing-md);
+        }
+
+        .panel__media {
+          min-height: clamp(120px, 20vh, 180px);
+          border-radius: var(--radius-lg);
+        }
+
+        .panel__body {
+          padding: 0 var(--spacing-lg) var(--spacing-lg);
+          gap: var(--spacing-md);
+        }
+
+        .panel__actions {
+          padding: var(--spacing-md) var(--spacing-lg) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+        }
+
+        .panel__info-grid {
+          grid-template-columns: 1fr 1fr 1fr;
+        }
       }
     `,
   ],

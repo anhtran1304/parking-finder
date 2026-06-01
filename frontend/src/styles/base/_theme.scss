@@ -28,8 +28,11 @@
   /* --- Colors: Status --- */
   --color-status-success: #10B981;
   --color-status-warning: #F59E0B;
+  --color-status-warning-hover: #D97706;
   --color-status-error: #EF4444;
+  --color-status-error-hover: #DC2626;
   --color-status-info: #1A73E8;
+  --color-error: var(--color-status-error);
 
   /* --- Colors: Parking Domain --- */
   --color-parking-available: #10B981;
@@ -46,10 +49,20 @@
 
   /* --- Colors: Semantic --- */
   --color-rating: #FBBF24;
+  --color-danger-surface: rgba(239, 68, 68, 0.08);
+  --color-danger-surface-subtle: rgba(239, 68, 68, 0.06);
+  --color-danger-border: rgba(239, 68, 68, 0.16);
+  --color-danger-border-strong: rgba(239, 68, 68, 0.3);
+  --color-success-surface: rgba(16, 185, 129, 0.08);
+  --color-success-border: rgba(16, 185, 129, 0.16);
+  --color-warning-surface: rgba(245, 158, 11, 0.1);
+  --color-warning-border-strong: rgba(245, 158, 11, 0.3);
+  --color-primary-border-subtle: #D2E3FC;
 
   /* --- Overlays --- */
   --overlay-subtle: rgba(0, 0, 0, 0.04);
   --overlay-light: rgba(0, 0, 0, 0.06);
+  --overlay-hover: rgba(0, 0, 0, 0.05);
 
   /* --- Glass / Overlay --- */
   --glass-bg: rgba(255, 255, 255, 0.82);
@@ -58,6 +71,14 @@
   --glass-border: rgba(255, 255, 255, 0.6);
   --glass-border-subtle: rgba(0, 0, 0, 0.04);
 
+  /* --- Surfaces --- */
+  --surface-panel: var(--glass-bg-solid);
+  --surface-panel-glass: var(--glass-bg);
+  --surface-card: var(--color-bg-default);
+  --surface-card-muted: var(--color-bg-subtle);
+  --surface-hover: var(--color-bg-subtle);
+  --border-panel: var(--glass-border);
+
   /* --- Typography --- */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
 
@@ -65,6 +86,7 @@
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.8125rem;
   --font-size-md: 0.9375rem;
+  --font-size-base: 1rem;
   --font-size-lg: 1.0625rem;
   --font-size-xl: 1.25rem;
   --font-size-2xl: 1.5rem;
@@ -83,6 +105,7 @@
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
   --tracking-wide: 0.01em;
+  --letter-spacing-tight: var(--tracking-tight);
 
   /* --- Spacing --- */
   --spacing-2xs: 2px;
@@ -93,6 +116,20 @@
   --spacing-xl: 20px;
   --spacing-2xl: 24px;
   --spacing-3xl: 32px;
+
+  /* --- Layout: Controls --- */
+  --control-height-md: 44px;
+  --button-height-sm: 40px;
+  --button-height-md: 42px;
+  --button-height-lg: 44px;
+  --button-disabled-opacity: 0.6;
+
+  /* --- Layout: Panels --- */
+  --panel-edge: 20px;
+  --panel-top: 72px;
+  --panel-width: 340px;
+  --panel-width-compact: 300px;
+  --panel-mobile-height: min(86vh, calc(100vh - 72px));
 
   /* --- Border Radius --- */
   --radius-sm: 8px;
@@ -115,6 +152,11 @@
   --shadow-primary-sm: 0 2px 8px rgba(26, 115, 232, 0.25);
   --shadow-primary-md: 0 4px 16px rgba(26, 115, 232, 0.35);
   --shadow-primary-focus: inset 0 0 0 1.5px rgba(26, 115, 232, 0.3);
+  --focus-ring: 0 0 0 4px rgba(26, 115, 232, 0.08);
+  --shadow-danger-sm: 0 2px 8px rgba(239, 68, 68, 0.3);
+  --shadow-danger-md: 0 4px 14px rgba(239, 68, 68, 0.4);
+  --shadow-warning-sm: 0 2px 8px rgba(245, 158, 11, 0.3);
+  --shadow-warning-md: 0 4px 14px rgba(245, 158, 11, 0.4);
 
   /* --- Icon Sizes --- */
   --icon-xs: 14px;
@@ -136,6 +178,11 @@
   --duration-fast: 150ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
+
+  /* --- Legacy Aliases (temporary migration bridge) --- */
+  --border: var(--color-border-default);
+  --surface: var(--surface-card);
+  --brand: var(--color-primary-base);
 
   /* --- Breakpoints (CSS var reference only) --- */
   --breakpoint-tablet: 768px;

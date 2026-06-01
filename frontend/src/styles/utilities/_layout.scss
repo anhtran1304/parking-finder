@@ -1,0 +1,19 @@
+// ═══════════════════════════════════════════════════════════════
+// LAYOUT UTILITIES
+// Low-level layout helpers for repeated local patterns
+// ═══════════════════════════════════════════════════════════════
+
+@layer utilities {
+  .pf-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pf-stack-gap, var(--spacing-md));
+  }
+
+  .pf-cluster {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--pf-cluster-gap, var(--spacing-md));
+  }
+}
