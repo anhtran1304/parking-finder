@@ -1,5 +1,5 @@
 version: 3
-last_updated: 2026-05-28
+last_updated: 2026-06-01
 current_phase: phase_3_user_journey
 
 phases:
@@ -105,10 +105,10 @@ phases:
         note: "Springdoc Swagger UI enabled, OpenAPI bearer scheme configured, and endpoint tag/summary/description/response annotations standardized"
       - id: active_booking_api
         status: done
-        note: "GET /bookings/active returns current user's ACTIVE booking; empty result returns HTTP 200 with empty body"
+        note: "GET /bookings/active returns current user's ACTIVE booking as enriched BookingDetailResponse; empty result returns HTTP 200 with empty body"
       - id: booking_detail_api
         status: done
-        note: "GET /bookings/{bookingId} returns enriched BookingDetailResponse (parkingName, address) scoped to authenticated principal; 404 for both not-found and wrong-owner"
+        note: "GET /bookings/{bookingId} returns enriched BookingDetailResponse (parkingName, address, hourlyRate) scoped to authenticated principal; 404 for both not-found and wrong-owner"
       - id: booking_ownership_hardening
         status: done
         note: "cancelBooking renamed to cancelBookingForUser(Long, String); ownership enforced via .filter(b -> b.getUserId().equals(userId)) before orElseThrow; controller passes @AuthenticationPrincipal username; 404 returned for both not-found and wrong-owner to prevent ID enumeration"
@@ -124,11 +124,11 @@ phases:
         status: done
         note: "HTTP interceptor attaches Bearer token, authGuard protects booking routes, AuthSessionService holds access token, withInterceptors wired in main.ts bootstrap"
       - id: current_booking_view
-        status: pending
-        note: "Active booking banner showing parking name + remaining time"
+        status: done
+        note: "Current booking banner wired to GET /bookings/active and locally seeded from new PENDING reservations with parking name, countdown, dismiss, and booking-detail action"
       - id: booking_history_view
-        status: pending
-        note: "List of past bookings with status badges"
+        status: done
+        note: "Right-side Context Panel replacing Profile: back header with count, chronological activity timeline, load-more pagination, and extracted reservation-style Booking Detail drill-in. Map remains mounted."
       - id: map_shell_nested_routing
         status: done
         note: "Added /map, /map/:parkingId, /map/:parkingId/booking routes with persistent shell and route-driven state"
@@ -138,9 +138,24 @@ phases:
       - id: auth_return_to_intent
         status: done
         note: "Auth modal and /auth/* redirect bridge preserve returnUrl; booking intent resumed after sign-in via route state"
+      - id: profile_view
+        status: done
+        note: "Minimal profile drawer: compact sticky header (avatar + name + email + Detail Panel-style close), recent booking preview (1 item, View History), vehicle preview (max 2, View All), payment preview (primary card, Manage), sign-out. Settings/Edit Profile deferred to future Settings View."
       - id: mobile_desktop_overlay_parity
-        status: pending
-        note: "Same route/state, different presentation: desktop right drawer, mobile bottom sheet"
+        status: done
+        note: "Same route/state, different presentation: desktop right drawer, mobile bottom sheet for detail, profile, and booking history panels"
+      - id: booking_center_redesign
+        status: done
+        note: "Replaced Booking History with user-centric My Bookings panel: Current Reservation section (ACTIVE/PENDING) + Recent Bookings (COMPLETED/CANCELLED/EXPIRED); renamed component to BookingCenterPanel"
+      - id: active_booking_card
+        status: done
+        note: "Current Reservation card with parking identity, status badge, live countdown, distance, end time, View Details and Navigate actions"
+      - id: booking_history_separation
+        status: done
+        note: "Timeline now filters to only past bookings (COMPLETED/CANCELLED/EXPIRED); active/pending bookings promoted to separate section"
+      - id: booking_detail_consumer_ui
+        status: done
+        note: "Redesigned from admin-CRUD to consumer reservation detail: hero section (parking name, status, countdown, distance), promoted actions with cancel stub, card-based reservation summary, sentence case throughout, Booking ID de-emphasized to Ref #N subtitle"
 
   phase_4_realtime:
     status: pending
