@@ -19,7 +19,7 @@
 
   &:focus-within {
     border-color: var(--color-primary-base);
-    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.08);
+    box-shadow: var(--focus-ring);
   }
 }
 
@@ -44,5 +44,117 @@
     -webkit-box-shadow: 0 0 0 100px var(--color-bg-default) inset !important;
     -webkit-text-fill-color: var(--color-text-primary) !important;
     transition: background-color 5000s ease-in-out 0s;
+  }
+}
+
+@layer components {
+  .pf-form {
+    display: grid;
+    gap: var(--spacing-md);
+  }
+
+  .pf-field {
+    display: grid;
+    gap: var(--spacing-xs);
+  }
+
+  .pf-field__label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+  }
+
+  .pf-field__control {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--spacing-sm);
+    min-height: var(--control-height-md);
+    padding: 0 var(--spacing-md);
+    border: 1px solid var(--color-border-default);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-default);
+    transition:
+      border-color var(--duration-fast) ease,
+      box-shadow var(--duration-fast) ease;
+  }
+
+  .pf-field__control:focus-within {
+    border-color: var(--color-primary-base);
+    box-shadow: var(--focus-ring);
+  }
+
+  .pf-field__control app-icon {
+    color: var(--color-text-tertiary);
+  }
+
+  .pf-field__input {
+    width: 100%;
+    min-height: 42px;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+  }
+
+  .pf-field__input::placeholder {
+    color: var(--color-text-tertiary);
+  }
+
+  .pf-field__input:-webkit-autofill,
+  .pf-field__input:-webkit-autofill:hover,
+  .pf-field__input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 100px var(--color-bg-default) inset !important;
+    -webkit-text-fill-color: var(--color-text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  .pf-field__toggle {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+    transition:
+      background var(--duration-fast) ease,
+      color var(--duration-fast) ease;
+  }
+
+  .pf-field__toggle:hover {
+    background: var(--overlay-hover);
+    color: var(--color-text-secondary);
+  }
+
+  .pf-form-error {
+    margin: -4px 0 0;
+    color: var(--color-status-error);
+    font-size: var(--font-size-2xs);
+  }
+
+  .pf-form-message {
+    margin: 0;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .pf-form-message--danger {
+    border-color: var(--color-danger-border);
+    background: var(--color-danger-surface);
+    color: var(--color-status-error);
+  }
+
+  .pf-form-message--success {
+    border-color: var(--color-success-border);
+    background: var(--color-success-surface);
+    color: var(--color-status-success);
   }
 }

@@ -23,3 +23,145 @@
     cursor: not-allowed;
   }
 }
+
+@layer components {
+  .pf-button {
+    min-height: var(--button-height-md);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: 10px var(--spacing-xl);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--leading-normal);
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background var(--duration-fast) ease,
+      border-color var(--duration-fast) ease,
+      color var(--duration-fast) ease,
+      transform var(--duration-fast) var(--ease-out-expo),
+      box-shadow var(--duration-fast) var(--ease-out-expo);
+  }
+
+  .pf-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .pf-button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .pf-button:disabled {
+    opacity: var(--button-disabled-opacity);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .pf-button--primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--color-primary-base), var(--color-primary-hover));
+    color: var(--color-text-inverse);
+    box-shadow: var(--shadow-primary-sm);
+  }
+
+  .pf-button--primary:hover:not(:disabled) {
+    box-shadow: var(--shadow-primary-md);
+  }
+
+  .pf-button--primary:active:not(:disabled) {
+    box-shadow: var(--shadow-primary-xs);
+  }
+
+  .pf-button--secondary {
+    border-color: var(--color-border-default);
+    background: var(--color-bg-default);
+    color: var(--color-text-primary);
+  }
+
+  .pf-button--secondary:hover:not(:disabled) {
+    background: var(--surface-hover);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .pf-button--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-primary-base);
+  }
+
+  .pf-button--ghost:hover:not(:disabled) {
+    background: var(--color-primary-light);
+  }
+
+  .pf-button--danger {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--color-status-error), var(--color-status-error-hover));
+    color: var(--color-text-inverse);
+    box-shadow: var(--shadow-danger-sm);
+  }
+
+  .pf-button--danger:hover:not(:disabled) {
+    box-shadow: var(--shadow-danger-md);
+  }
+
+  .pf-button--danger-soft {
+    border-color: var(--color-danger-border-strong);
+    background: var(--color-danger-surface-subtle);
+    color: var(--color-status-error);
+  }
+
+  .pf-button--danger-soft:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pf-button--warning {
+    border-color: transparent;
+    background: linear-gradient(135deg, var(--color-status-warning), var(--color-status-warning-hover));
+    color: var(--color-text-inverse);
+    box-shadow: var(--shadow-warning-sm);
+  }
+
+  .pf-button--warning:hover:not(:disabled) {
+    box-shadow: var(--shadow-warning-md);
+  }
+
+  .pf-button--full {
+    width: 100%;
+  }
+
+  .pf-button--wide {
+    grid-column: 1 / -1;
+  }
+
+  .pf-button--sm {
+    min-height: var(--button-height-sm);
+    padding: 8px var(--spacing-md);
+    font-size: var(--font-size-xs);
+  }
+
+  .pf-button--lg {
+    min-height: var(--button-height-lg);
+  }
+
+  .pf-button__spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: pf-spin 0.7s linear infinite;
+  }
+}
+
+@keyframes pf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

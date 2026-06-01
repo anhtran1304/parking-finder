@@ -22,25 +22,28 @@ import { IconComponent } from '../../shared/components/icon.component';
           </p>
         </header>
 
-        <form (submit)="onSubmit($event)" class="forgot-card__form" novalidate>
-          <label for="forgot-email">Email</label>
-          <div class="forgot-card__field">
-            <app-icon name="mail" [size]="16" [strokeWidth]="2" />
-            <input
-              id="forgot-email"
-              type="email"
-              [value]="email()"
-              (input)="onEmailInput($event)"
-              placeholder="you@company.com"
-              autocomplete="email"
-            />
-          </div>
+        <form (submit)="onSubmit($event)" class="pf-form forgot-card__form" novalidate>
+          <label class="pf-field" for="forgot-email">
+            <span class="pf-field__label">Email</span>
+            <div class="pf-field__control">
+              <app-icon name="mail" [size]="16" [strokeWidth]="2" />
+              <input
+                class="pf-field__input"
+                id="forgot-email"
+                type="email"
+                [value]="email()"
+                (input)="onEmailInput($event)"
+                placeholder="you@company.com"
+                autocomplete="email"
+              />
+            </div>
+          </label>
 
-          <button type="submit" [disabled]="!email().trim()">Notify me</button>
+          <button class="pf-button pf-button--primary pf-button--full pf-button--lg forgot-card__submit" type="submit" [disabled]="!email().trim()">Notify me</button>
         </form>
 
         @if (submitted()) {
-          <p class="forgot-card__success">Thanks. We saved your interest for early access.</p>
+          <p class="pf-form-message pf-form-message--success forgot-card__success">Thanks. We saved your interest for early access.</p>
         }
       </article>
     </main>
@@ -76,7 +79,7 @@ import { IconComponent } from '../../shared/components/icon.component';
         align-items: center;
         gap: 6px;
         text-decoration: none;
-        color: rgba(26, 115, 232, 0.94);
+        color: var(--color-primary-base);
         font-size: 0.84rem;
         font-weight: 600;
       }
@@ -103,64 +106,15 @@ import { IconComponent } from '../../shared/components/icon.component';
 
       .forgot-card__form {
         margin-top: 20px;
-        display: grid;
         gap: 8px;
       }
 
-      label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: rgba(13, 27, 53, 0.8);
-      }
-
-      .forgot-card__field {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid rgba(26, 115, 232, 0.2);
-        border-radius: 12px;
-        min-height: 46px;
-        padding: 0 12px;
-        background: #fff;
-      }
-
-      .forgot-card__field app-icon {
-        color: rgba(13, 27, 53, 0.44);
-      }
-
-      .forgot-card__field input {
-        border: 0;
-        outline: 0;
-        min-height: 44px;
-        background: transparent;
-        font-size: 0.95rem;
-      }
-
-      button {
+      .forgot-card__submit {
         margin-top: 6px;
-        min-height: 46px;
-        border-radius: 12px;
-        border: 0;
-        background: linear-gradient(135deg, #1a73e8, #1557b0);
-        color: #fff;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
       }
 
       .forgot-card__success {
         margin-top: 14px;
-        font-size: 0.85rem;
-        color: #0f766e;
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.24);
-        padding: 10px 12px;
-        border-radius: 10px;
       }
 
       @media (max-width: 767px) {

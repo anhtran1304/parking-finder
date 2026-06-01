@@ -21,12 +21,13 @@ import { SignInFormModel } from '../../interfaces/auth-form.interface';
   standalone: true,
   imports: [CommonModule, IconComponent, FormField],
   template: `
-    <form class="form" (submit)="onSubmit($event)" novalidate>
-      <label class="field" for="signin-email">
-        <span>Email</span>
-        <div class="field__control">
+    <form class="pf-form auth-form" (submit)="onSubmit($event)" novalidate>
+      <label class="pf-field" for="signin-email">
+        <span class="pf-field__label">Email</span>
+        <div class="pf-field__control">
           <app-icon name="mail" [size]="16" [strokeWidth]="2" />
           <input
+            class="pf-field__input"
             id="signin-email"
             type="email"
             [formField]="signinForm.email"
@@ -38,14 +39,15 @@ import { SignInFormModel } from '../../interfaces/auth-form.interface';
       </label>
 
       @if (showFieldError(signinForm.email, submitted())) {
-        <p class="form__error">{{ fieldErrorMessage(signinForm.email, 'Enter a valid email address.') }}</p>
+        <p class="pf-form-error">{{ fieldErrorMessage(signinForm.email, 'Enter a valid email address.') }}</p>
       }
 
-      <label class="field" for="signin-password">
-        <span>Password</span>
-        <div class="field__control">
+      <label class="pf-field" for="signin-password">
+        <span class="pf-field__label">Password</span>
+        <div class="pf-field__control">
           <app-icon name="lock" [size]="16" [strokeWidth]="2" />
           <input
+            class="pf-field__input"
             id="signin-password"
             [type]="showPassword() ? 'text' : 'password'"
             [formField]="signinForm.password"
@@ -54,7 +56,7 @@ import { SignInFormModel } from '../../interfaces/auth-form.interface';
             [attr.aria-invalid]="showFieldError(signinForm.password, submitted()) ? 'true' : 'false'"
           />
           <button
-            class="field__toggle"
+            class="pf-field__toggle"
             type="button"
             (click)="showPassword.set(!showPassword())"
             [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
@@ -65,20 +67,20 @@ import { SignInFormModel } from '../../interfaces/auth-form.interface';
       </label>
 
       @if (showFieldError(signinForm.password, submitted())) {
-        <p class="form__error">{{ fieldErrorMessage(signinForm.password, 'Password is invalid.') }}</p>
+        <p class="pf-form-error">{{ fieldErrorMessage(signinForm.password, 'Password is invalid.') }}</p>
       }
 
       @if (errorMessage()) {
-        <p class="form__message form__message--error" role="alert">{{ errorMessage() }}</p>
+        <p class="pf-form-message pf-form-message--danger" role="alert">{{ errorMessage() }}</p>
       }
 
       @if (successMessage()) {
-        <p class="form__message form__message--success" role="status">{{ successMessage() }}</p>
+        <p class="pf-form-message pf-form-message--success" role="status">{{ successMessage() }}</p>
       }
 
-      <button class="form__cta" type="submit" [disabled]="submitting()">
+      <button class="pf-button pf-button--primary pf-button--full pf-button--lg auth-form__cta" type="submit" [disabled]="submitting()">
         @if (submitting()) {
-          <span class="form__spinner" aria-hidden="true"></span>
+          <span class="pf-button__spinner" aria-hidden="true"></span>
           <span>Signing in...</span>
         } @else {
           <span>Sign In</span>
@@ -88,155 +90,12 @@ import { SignInFormModel } from '../../interfaces/auth-form.interface';
   `,
   styles: [
     `
-      .form {
+      .auth-form {
         margin-top: var(--spacing-xl);
-        display: grid;
-        gap: var(--spacing-md);
       }
 
-      .field {
-        display: grid;
-        gap: var(--spacing-xs);
-      }
-
-      .field > span {
-        font-size: var(--font-size-xs);
-        font-weight: var(--font-weight-semibold);
-        color: var(--color-text-secondary);
-      }
-
-      .field__control {
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: var(--spacing-sm);
-        min-height: 44px;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--color-border-default);
-        background: var(--color-bg-default);
-        padding: 0 var(--spacing-md);
-        transition:
-          border-color var(--duration-fast) ease,
-          box-shadow var(--duration-fast) ease;
-      }
-
-      .field__control:focus-within {
-        border-color: var(--color-primary-base);
-        box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.08);
-      }
-
-      .field__control app-icon {
-        color: var(--color-text-tertiary);
-      }
-
-      .field__control input {
-        border: 0;
-        outline: none;
-        width: 100%;
-        min-height: 42px;
-        background: transparent;
-        font-size: var(--font-size-sm);
-        color: var(--color-text-primary);
-      }
-
-      .field__control input::placeholder {
-        color: var(--color-text-tertiary);
-      }
-
-      .field__control input:-webkit-autofill,
-      .field__control input:-webkit-autofill:hover,
-      .field__control input:-webkit-autofill:focus {
-        -webkit-box-shadow: 0 0 0 100px var(--color-bg-default) inset !important;
-        -webkit-text-fill-color: var(--color-text-primary) !important;
-        transition: background-color 5000s ease-in-out 0s;
-      }
-
-      .field__toggle {
-        border: 0;
-        width: 28px;
-        height: 28px;
-        border-radius: var(--radius-full);
-        background: transparent;
-        color: var(--color-text-tertiary);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all var(--duration-fast) ease;
-      }
-
-      .field__toggle:hover {
-        background: rgba(0, 0, 0, 0.05);
-        color: var(--color-text-secondary);
-      }
-
-      .form__error {
-        margin: -4px 0 0;
-        font-size: var(--font-size-2xs);
-        color: var(--color-status-error);
-      }
-
-      .form__message {
-        margin: 0;
-        font-size: var(--font-size-xs);
-        border-radius: var(--radius-sm);
-        padding: var(--spacing-sm) var(--spacing-md);
-      }
-
-      .form__message--error {
-        color: var(--color-status-error);
-        background: rgba(239, 68, 68, 0.08);
-        border: 1px solid rgba(239, 68, 68, 0.16);
-      }
-
-      .form__message--success {
-        color: var(--color-status-success);
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.16);
-      }
-
-      .form__cta {
+      .auth-form__cta {
         margin-top: var(--spacing-xs);
-        min-height: 44px;
-        border: 0;
-        border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--color-primary-base), var(--color-primary-hover));
-        color: var(--color-text-inverse);
-        font-size: var(--font-size-sm);
-        font-weight: var(--font-weight-semibold);
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: var(--spacing-sm);
-        box-shadow: var(--shadow-primary-sm);
-        transition:
-          transform var(--duration-fast) var(--ease-out-expo),
-          box-shadow var(--duration-fast) var(--ease-out-expo);
-      }
-
-      .form__cta:hover:not(:disabled) {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-primary-md);
-      }
-
-      .form__cta:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-
-      .form__spinner {
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(255, 255, 255, 0.82);
-        border-top-color: transparent;
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-      }
-
-      @keyframes spin {
-        to { transform: rotate(360deg); }
       }
     `,
   ],

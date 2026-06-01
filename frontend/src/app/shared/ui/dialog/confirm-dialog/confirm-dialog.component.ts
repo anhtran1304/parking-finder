@@ -30,7 +30,7 @@ import { IconComponent } from '../../../components/icon.component';
           @if (dialog.config.cancelText) {
             <button
               type="button"
-              class="confirm__btn confirm__btn--secondary"
+              class="pf-button pf-button--secondary"
               (click)="onCancel()"
             >
               {{ dialog.config.cancelText }}
@@ -38,9 +38,9 @@ import { IconComponent } from '../../../components/icon.component';
           }
           <button
             type="button"
-            class="confirm__btn confirm__btn--primary"
-            [class.confirm__btn--destructive]="dialog.config.variant === 'destructive'"
-            [class.confirm__btn--warning]="dialog.config.variant === 'warning'"
+            class="pf-button pf-button--primary"
+            [class.pf-button--danger]="dialog.config.variant === 'destructive'"
+            [class.pf-button--warning]="dialog.config.variant === 'warning'"
             (click)="onConfirm()"
           >
             {{ dialog.config.confirmText }}
@@ -71,13 +71,13 @@ import { IconComponent } from '../../../components/icon.component';
       }
 
       .confirm__icon--destructive {
-        background: rgba(239, 68, 68, 0.1);
-        color: #EF4444;
+        background: var(--color-danger-surface);
+        color: var(--color-status-error);
       }
 
       .confirm__icon--warning {
-        background: rgba(245, 158, 11, 0.1);
-        color: #F59E0B;
+        background: var(--color-warning-surface);
+        color: var(--color-status-warning);
       }
 
       .confirm__title {
@@ -102,60 +102,6 @@ import { IconComponent } from '../../../components/icon.component';
         gap: var(--spacing-sm);
       }
 
-      .confirm__btn {
-        min-height: 42px;
-        border-radius: var(--radius-md);
-        font-size: var(--font-size-sm);
-        font-weight: var(--font-weight-semibold);
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition:
-          transform var(--duration-fast) var(--ease-out-expo),
-          box-shadow var(--duration-fast) var(--ease-out-expo);
-      }
-
-      .confirm__btn--secondary {
-        border: 1px solid var(--color-border-default);
-        background: var(--color-bg-default);
-        color: var(--color-text-primary);
-      }
-
-      .confirm__btn--secondary:hover {
-        box-shadow: var(--shadow-xs);
-        transform: translateY(-1px);
-      }
-
-      .confirm__btn--primary {
-        border: 0;
-        background: linear-gradient(135deg, var(--color-primary-base), var(--color-primary-hover));
-        color: var(--color-text-inverse);
-        box-shadow: var(--shadow-primary-sm);
-      }
-
-      .confirm__btn--primary:hover {
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-primary-md);
-      }
-
-      .confirm__btn--destructive {
-        background: linear-gradient(135deg, #EF4444, #DC2626);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-      }
-
-      .confirm__btn--destructive:hover {
-        box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
-      }
-
-      .confirm__btn--warning {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
-        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-      }
-
-      .confirm__btn--warning:hover {
-        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
-      }
     `,
   ],
 })
