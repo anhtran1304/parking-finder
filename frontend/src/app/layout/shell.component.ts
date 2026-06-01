@@ -9,16 +9,22 @@ import { BookingApiService } from '../core/services/booking-api.service';
 import { ParkingApiService } from '../core/services/parking-api.service';
 import { AuthOverlayComponent } from '../features/auth/components/auth-overlay/auth-overlay.component';
 import type { AuthOverlayBookingContext, AuthOverlayMode } from '../features/auth/interfaces/auth-overlay.interface';
+import { ActiveBookingBannerComponent } from '../features/booking/active-booking-banner.component';
+import { BookingDetailComponent } from '../features/booking/booking-detail.component';
+import { BookingCenterPanelComponent } from '../features/booking/booking-history-panel.component';
 import { DialogService } from '../shared/ui/dialog/dialog.service';
 import { ReservationDialogComponent, ReservationDialogResult } from '../shared/ui/dialog/reservation-dialog/reservation-dialog.component';
-import { CreateBookingRequest, ReservePayload } from '../models/booking.model';
+import { BookingDetailResponse, BookingResponse, CreateBookingRequest, ReservePayload } from '../models/booking.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { DetailPanelComponent } from './detail-panel.component';
+import { ProfilePanelComponent } from './profile-panel.component';
 import { SidebarComponent } from './sidebar.component';
 import { ParkingMapComponent } from '../features/parking/parking-map.component';
+import { IconComponent } from '../shared/components/icon.component';
 
 export type ParkingFilter = 'available' | 'ev' | 'covered' | 'cheap';
 type BookingFeedback = { type: 'success' | 'error'; message: string };
+type BookingDetailReturnTarget = 'history' | 'map';
 
 @Component({
   selector: 'app-shell',
@@ -28,10 +34,15 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
     SidebarComponent,
     ParkingMapComponent,
     DetailPanelComponent,
+    ProfilePanelComponent,
+    ActiveBookingBannerComponent,
+    BookingDetailComponent,
+    BookingCenterPanelComponent,
     AuthOverlayComponent,
+    IconComponent,
   ],
   template: `
-    <div class="shell">
+    <div class="shell" [class.shell--panel-open]="hasPanelOverlay()">
       <app-parking-map
         class="shell__map"
         [parkings]="filteredParkings()"
@@ -57,8 +68,68 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
         (filterToggled)="onFilterToggle($event)"
       ></app-sidebar>
 
+      <button
+        *ngIf="hasPanelOverlay()"
+        class="shell__mobile-overlay-backdrop"
+        type="button"
+        aria-label="Close panel"
+        (click)="closeMobileOverlay()"
+      ></button>
+
+      <app-active-booking-banner
+        *ngIf="visibleActiveBooking() as booking"
+        class="shell__active-booking"
+        [booking]="booking"
+        (viewClicked)="onActiveBookingView($event)"
+        (dismissClicked)="onActiveBookingDismiss()"
+      ></app-active-booking-banner>
+
+      <!-- Avatar / profile toggle button -->
+      <button
+        class="shell__avatar-btn"
+        [class.shell__avatar-btn--active]="profileOpen() || historyOpen()"
+        (click)="onAvatarClick()"
+        aria-label="Toggle profile"
+      >
+        @if (isAuthenticated()) {
+          <span>{{ userInitials() }}</span>
+        } @else {
+          <app-icon name="user-round" [size]="18" />
+        }
+      </button>
+
+      <!-- Profile panel -->
+      <app-profile-panel
+        *ngIf="profileOpen() && !historyOpen() && !selectedBookingDetailId()"
+        class="shell__profile"
+        (closeClicked)="onProfileClosed()"
+        (historyRequested)="onProfileHistoryRequested()"
+        (signedOut)="onProfileSignedOut()"
+      ></app-profile-panel>
+
+      <app-booking-center-panel
+        *ngIf="historyOpen() && !selectedBookingDetailId()"
+        class="shell__history"
+        [parkings]="parkings()"
+        (backClicked)="onHistoryBack()"
+        (bookingSelected)="onHistoryBookingSelected($event)"
+        (navigateRequested)="onBookingDetailNavigate($event)"
+      ></app-booking-center-panel>
+
+      <app-booking-detail
+        *ngIf="selectedBookingDetailId() as bookingId"
+        class="shell__booking-detail"
+        [bookingId]="bookingId"
+        [parkings]="parkings()"
+        (closed)="onBookingDetailClosed()"
+        (navigateRequested)="onBookingDetailNavigate($event)"
+        (viewParkingRequested)="onBookingDetailViewParking($event)"
+        (bookAgainRequested)="onBookingDetailBookAgain($event)"
+        (cancelRequested)="onBookingDetailCancel()"
+      ></app-booking-detail>
+
       <app-detail-panel
-        *ngIf="selectedParking()"
+        *ngIf="selectedParking() && !profileOpen() && !historyOpen() && !selectedBookingDetailId()"
         class="shell__detail"
         [parking]="selectedParking()"
         [reserveDisabled]="(selectedParking()?.availableSlots ?? 0) <= 0"
@@ -91,6 +162,9 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
   styles: [
     `
       .shell {
+        --shell-edge: var(--panel-edge);
+        --shell-panel-top: var(--panel-top);
+
         position: relative;
         width: 100vw;
         height: 100vh;
@@ -116,9 +190,9 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
 
       .shell__sidebar {
         position: absolute;
-        top: 20px;
-        left: 20px;
-        bottom: 20px;
+        top: var(--shell-edge);
+        left: var(--shell-edge);
+        bottom: var(--shell-edge);
         width: 360px;
         display: block;
         max-height: calc(100vh - 40px);
@@ -126,19 +200,70 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
         animation: panelSlideIn 0.4s var(--ease-out-expo) both;
       }
 
+      .shell__avatar-btn {
+        position: absolute;
+        top: var(--shell-edge);
+        right: var(--shell-edge);
+        z-index: 20;
+        width: 44px;
+        height: 44px;
+        border-radius: var(--radius-lg);
+        background: var(--glass-bg-solid);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        box-shadow: var(--shadow-md);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-primary-base);
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-bold);
+        transition: all var(--duration-fast) ease;
+      }
+      .shell__avatar-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-lg);
+      }
+      .shell__avatar-btn--active {
+        background: var(--color-primary-base);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 4px 20px rgba(26, 115, 232, 0.4);
+      }
+
+      .shell__active-booking {
+        position: absolute;
+        top: var(--shell-edge);
+        left: 400px;
+        right: 84px;
+        max-width: 420px;
+        z-index: 25;
+        animation: panelSlideIn 0.35s var(--ease-out-expo) both;
+      }
+
+      .shell__mobile-overlay-backdrop {
+        display: none;
+      }
+
+      .shell__profile,
+      .shell__history,
+      .shell__booking-detail,
       .shell__detail {
         position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 340px;
-        max-height: calc(100vh - 40px);
+        top: var(--shell-panel-top);
+        right: var(--shell-edge);
+        bottom: var(--shell-edge);
+        width: var(--panel-width);
+        height: auto;
+        min-height: 0;
         z-index: 10;
         animation: panelSlideInRight 0.35s var(--ease-out-expo) both;
       }
 
       .shell__feedback {
         position: absolute;
-        top: 20px;
+        top: var(--shell-edge);
         left: 50%;
         transform: translateX(-50%);
         z-index: 50;
@@ -171,8 +296,16 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
           width: 320px;
         }
 
-        .shell__detail {
-          width: 300px;
+        .shell__active-booking {
+          left: 360px;
+          max-width: 340px;
+        }
+
+        .shell__detail,
+        .shell__profile,
+        .shell__history,
+        .shell__booking-detail {
+          width: var(--panel-width-compact);
         }
       }
 
@@ -186,8 +319,43 @@ type BookingFeedback = { type: 'success' | 'error'; message: string };
           max-height: 45vh;
         }
 
-        .shell__detail {
+        .shell__detail,
+        .shell__profile,
+        .shell__history,
+        .shell__booking-detail {
+          position: absolute;
+          top: auto;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: auto;
+          height: var(--panel-mobile-height);
+          max-height: var(--panel-mobile-height);
+          z-index: 40;
+          animation: sheetSlideUp var(--duration-slow) var(--ease-out-expo) both;
+        }
+
+        .shell__active-booking {
+          top: 72px;
+          left: 12px;
+          right: 12px;
+          max-width: none;
+        }
+
+        .shell--panel-open .shell__active-booking {
           display: none;
+        }
+
+        .shell__mobile-overlay-backdrop {
+          display: block;
+          position: absolute;
+          inset: 0;
+          z-index: 30;
+          border: 0;
+          background: rgba(13, 27, 53, 0.2);
+          backdrop-filter: blur(3px);
+          -webkit-backdrop-filter: blur(3px);
+          animation: fadeIn var(--duration-normal) var(--ease-out-expo);
         }
       }
     `,
@@ -203,14 +371,43 @@ export class ShellComponent implements OnInit {
   readonly searchQuery = signal('');
   readonly bookingInFlight = signal(false);
   readonly bookingFeedback = signal<BookingFeedback | null>(null);
+  readonly activeBooking = signal<BookingDetailResponse | null>(null);
+  readonly dismissedActiveBookingId = signal<number | null>(null);
+  readonly selectedBookingDetailId = signal<number | null>(null);
 
   readonly authMode = signal<AuthOverlayMode | null>(null);
   readonly bookingDraft = signal<ReservePayload | null>(null);
+  readonly profileOpen = signal(false);
+  readonly historyOpen = signal(false);
+  private readonly bookingDetailReturnTarget = signal<BookingDetailReturnTarget>('map');
   readonly isAuthenticated = computed(() => !!this.authSessionService.getValidSession());
+  readonly userInitials = computed(() => {
+    const name = this.authSessionService.session()?.fullName ?? '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase() || '?';
+  });
 
   private readonly routeParkingId = signal<number | null>(null);
   private readonly bookingRouteActive = signal(false);
   readonly isBookingRoute = this.bookingRouteActive.asReadonly();
+
+  readonly hasPanelOverlay = computed(() =>
+    !!this.selectedBookingDetailId()
+    || this.historyOpen()
+    || this.profileOpen()
+    || (!!this.selectedParking() && !this.historyOpen() && !this.profileOpen())
+  );
+
+  readonly visibleActiveBooking = computed(() => {
+    const booking = this.activeBooking();
+    if (!this.isAuthenticated() || !booking || this.dismissedActiveBookingId() === booking.id) {
+      return null;
+    }
+    return booking;
+  });
 
   readonly filteredParkings = computed(() => {
     const all = this.parkings();
@@ -328,12 +525,16 @@ export class ShellComponent implements OnInit {
       .subscribe(() => this.syncRouteState());
 
     this.syncRouteState();
+    this.loadActiveBooking();
   }
 
   onParkingSelected(parking: NearbyParkingResponse): void {
     this.selectedParking.set(parking);
     this.bookingFeedback.set(null);
     this.bookingDraft.set(null);
+    this.selectedBookingDetailId.set(null);
+    this.profileOpen.set(false);
+    this.historyOpen.set(false);
 
     void this.router.navigate(['/map', parking.id], {
       queryParams: { auth: null, returnUrl: null },
@@ -344,8 +545,201 @@ export class ShellComponent implements OnInit {
   onDeselect(): void {
     this.bookingFeedback.set(null);
     this.bookingDraft.set(null);
+    this.selectedBookingDetailId.set(null);
+    this.historyOpen.set(false);
     this.closeAuthOverlay(false);
 
+    void this.router.navigate(['/map'], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onAvatarClick(): void {
+    if (!this.isAuthenticated()) {
+      this.setAuthMode('sign-in');
+      return;
+    }
+
+    this.selectedBookingDetailId.set(null);
+
+    if (this.historyOpen()) {
+      this.historyOpen.set(false);
+      this.profileOpen.set(false);
+      return;
+    }
+
+    this.profileOpen.set(!this.profileOpen());
+  }
+
+  onProfileClosed(): void {
+    this.profileOpen.set(false);
+  }
+
+  onProfileHistoryRequested(): void {
+    this.selectedBookingDetailId.set(null);
+    this.profileOpen.set(false);
+    this.historyOpen.set(true);
+  }
+
+  onHistoryBack(): void {
+    this.historyOpen.set(false);
+    this.profileOpen.set(true);
+  }
+
+  onHistoryViewParking(parkingId: number): void {
+    const parking = this.findParkingById(parkingId);
+    if (!parking) {
+      this.bookingFeedback.set({
+        type: 'error',
+        message: 'Parking is not available in the current map area.',
+      });
+      return;
+    }
+
+    this.historyOpen.set(false);
+    this.profileOpen.set(false);
+    this.selectedBookingDetailId.set(null);
+    this.bookingFeedback.set(null);
+    this.bookingDraft.set(null);
+    this.selectedParking.set(parking);
+
+    void this.router.navigate(['/map', parking.id], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onHistoryBookAgain(parkingId: number): void {
+    const parking = this.findParkingById(parkingId);
+    if (!parking) {
+      this.bookingFeedback.set({
+        type: 'error',
+        message: 'Parking is not available in the current map area.',
+      });
+      return;
+    }
+
+    this.historyOpen.set(false);
+    this.profileOpen.set(false);
+    this.selectedBookingDetailId.set(null);
+    this.selectedParking.set(parking);
+    this.onReserveIntent({ parkingId, durationHours: 1 });
+  }
+
+  onHistoryBookingSelected(bookingId: number): void {
+    this.bookingDetailReturnTarget.set('history');
+    this.selectedBookingDetailId.set(bookingId);
+    this.historyOpen.set(false);
+    this.profileOpen.set(false);
+    this.bookingFeedback.set(null);
+    this.bookingDraft.set(null);
+  }
+
+  onActiveBookingView(bookingId: number): void {
+    this.bookingDetailReturnTarget.set('map');
+    this.selectedBookingDetailId.set(bookingId);
+    this.historyOpen.set(false);
+    this.profileOpen.set(false);
+    this.selectedParking.set(null);
+    this.bookingFeedback.set(null);
+    this.bookingDraft.set(null);
+
+    void this.router.navigate(['/map'], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onBookingDetailClosed(): void {
+    const returnTarget = this.bookingDetailReturnTarget();
+    this.selectedBookingDetailId.set(null);
+
+    if (returnTarget === 'history') {
+      this.historyOpen.set(true);
+      this.profileOpen.set(false);
+      return;
+    }
+
+    this.historyOpen.set(false);
+    this.profileOpen.set(false);
+    this.selectedParking.set(null);
+    void this.router.navigate(['/map'], {
+      queryParams: { auth: null, returnUrl: null },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onBookingDetailNavigate(booking: BookingDetailResponse): void {
+    const parking = this.findParkingById(booking.parkingId);
+    if (parking) {
+      this.onNavigate(parking);
+      return;
+    }
+
+    const query = [booking.parkingName, booking.parkingAddress].filter(Boolean).join(', ');
+    if (!query) {
+      this.bookingFeedback.set({
+        type: 'error',
+        message: 'Navigation is unavailable for this booking.',
+      });
+      return;
+    }
+
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank');
+  }
+
+  onBookingDetailViewParking(parkingId: number): void {
+    this.onHistoryViewParking(parkingId);
+  }
+
+  onBookingDetailBookAgain(parkingId: number): void {
+    this.onHistoryBookAgain(parkingId);
+  }
+
+  onBookingDetailCancel(): void {
+    this.bookingFeedback.set({
+      type: 'error',
+      message: 'Cancel booking is coming soon.',
+    });
+  }
+
+  onActiveBookingDismiss(): void {
+    const booking = this.activeBooking();
+    if (booking) {
+      this.dismissedActiveBookingId.set(booking.id);
+    }
+  }
+
+  closeMobileOverlay(): void {
+    if (this.selectedBookingDetailId()) {
+      this.onBookingDetailClosed();
+      return;
+    }
+
+    if (this.historyOpen()) {
+      this.historyOpen.set(false);
+      this.profileOpen.set(false);
+      return;
+    }
+
+    if (this.profileOpen()) {
+      this.onProfileClosed();
+      return;
+    }
+
+    if (this.selectedParking()) {
+      this.onDeselect();
+    }
+  }
+
+  onProfileSignedOut(): void {
+    this.profileOpen.set(false);
+    this.historyOpen.set(false);
+    this.selectedParking.set(null);
+    this.selectedBookingDetailId.set(null);
+    this.activeBooking.set(null);
+    this.dismissedActiveBookingId.set(null);
     void this.router.navigate(['/map'], {
       queryParams: { auth: null, returnUrl: null },
       queryParamsHandling: 'merge',
@@ -458,6 +852,7 @@ export class ShellComponent implements OnInit {
           type: 'success',
           message: `Booking #${response.id} confirmed — ${durationLabel}.`,
         });
+        this.showCurrentBooking(response, selected);
 
         void this.router.navigate(['/map', response.parkingId], {
           queryParams: { auth: null, returnUrl: null },
@@ -484,6 +879,7 @@ export class ShellComponent implements OnInit {
 
   onAuthSuccess(): void {
     this.closeAuthOverlay();
+    this.loadActiveBooking();
 
     if (this.bookingDraft()) {
       this.openBookingDialog();
@@ -559,6 +955,34 @@ export class ShellComponent implements OnInit {
     });
   }
 
+  private loadActiveBooking(): void {
+    if (!this.authSessionService.getValidSession()) {
+      this.activeBooking.set(null);
+      this.dismissedActiveBookingId.set(null);
+      return;
+    }
+
+    this.bookingApiService
+      .getActiveBooking()
+      .pipe(catchError(() => of(null)))
+      .subscribe((booking) => {
+        this.activeBooking.set(booking);
+        if (!booking) {
+          this.dismissedActiveBookingId.set(null);
+        }
+      });
+  }
+
+  private showCurrentBooking(response: BookingResponse, parking: NearbyParkingResponse): void {
+    this.dismissedActiveBookingId.set(null);
+    this.activeBooking.set({
+      ...response,
+      parkingName: parking.name,
+      parkingAddress: this.buildLocationLabel(parking),
+      hourlyRate: parking.hourlyRate,
+    });
+  }
+
   private buildBookingRequest(payload: ReservePayload): CreateBookingRequest {
     const startTime = new Date(Date.now() + 5 * 60 * 1000);
     const endTime = new Date(startTime.getTime() + payload.durationHours * 60 * 60 * 1000);
@@ -591,6 +1015,10 @@ export class ShellComponent implements OnInit {
     if (updatedSelection) {
       this.selectedParking.set(updatedSelection);
     }
+  }
+
+  private findParkingById(parkingId: number): NearbyParkingResponse | null {
+    return this.parkings().find((parking) => parking.id === parkingId) ?? null;
   }
 
   private bookingErrorMessage(error: HttpErrorResponse): string {

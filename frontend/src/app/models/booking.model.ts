@@ -21,3 +21,32 @@ export interface BookingResponse {
   status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED';
   createdAt: string;
 }
+
+export interface BookingDetailResponse extends BookingResponse {
+  parkingName: string;
+  parkingAddress: string;
+  hourlyRate?: number;
+}
+
+export type BookingBadgeState = 'good' | 'warn' | 'danger';
+
+export interface BookingHistoryItemViewModel extends BookingResponse {
+  parkingName: string;
+  badgeState: BookingBadgeState;
+}
+
+export interface BookingDetailViewModel extends BookingDetailResponse {
+  dateLabel: string;
+  durationLabel: string;
+  totalLabel: string;
+  timeRangeLabel: string;
+  badgeState: BookingBadgeState;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}

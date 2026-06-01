@@ -1,8 +1,8 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { BookingResponse, CreateBookingRequest } from '../../models/booking.model';
+import { BookingDetailResponse, BookingResponse, CreateBookingRequest, PageResponse } from '../../models/booking.model';
 import { AuthSessionService } from './auth-session.service';
 
 @Injectable({ providedIn: 'root' })
@@ -21,8 +21,28 @@ export class BookingApiService {
     });
   }
 
-  getBooking(bookingId: number): Observable<BookingResponse> {
-    return this.http.get<BookingResponse>(`${this.baseUrl}/bookings/${bookingId}`, {
+  getBooking(bookingId: number): Observable<BookingDetailResponse> {
+    return this.http.get<BookingDetailResponse>(`${this.baseUrl}/bookings/${bookingId}`, {
+      headers: this.authorizationHeaders(),
+      withCredentials: true,
+    });
+  }
+
+  getBookingHistory(page: number, size: number): Observable<PageResponse<BookingResponse>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', size.toString())
+      .set('sort', 'createdAt,desc');
+
+    return this.http.get<PageResponse<BookingResponse>>(`${this.baseUrl}/bookings`, {
+      headers: this.authorizationHeaders(),
+      params,
+      withCredentials: true,
+    });
+  }
+
+  getActiveBooking(): Observable<BookingDetailResponse | null> {
+    return this.http.get<BookingDetailResponse | null>(`${this.baseUrl}/bookings/active`, {
       headers: this.authorizationHeaders(),
       withCredentials: true,
     });

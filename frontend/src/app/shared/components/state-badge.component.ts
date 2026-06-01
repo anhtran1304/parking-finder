@@ -6,34 +6,50 @@ import { Component, Input } from '@angular/core';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <span class="badge" [ngClass]="state">{{ label }}</span>
+    <span class="badge" [ngClass]="state">
+      <span class="badge__dot"></span>
+      {{ label }}
+    </span>
   `,
   styles: [
     `
+      :host {
+        display: inline-flex;
+        width: fit-content;
+      }
+
       .badge {
         display: inline-flex;
         align-items: center;
-        border-radius: 999px;
-        padding: 0.2rem 0.6rem;
-        font-size: 0.76rem;
-        letter-spacing: 0.03em;
-        font-weight: 700;
+        gap: 6px;
+        border-radius: var(--radius-full);
+        padding: 4px 10px;
+        font-size: var(--font-size-2xs);
+        letter-spacing: 0.04em;
+        font-weight: var(--font-weight-semibold);
         text-transform: uppercase;
       }
 
+      .badge__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
       .good {
-        background: #d6efdf;
-        color: #1b6b41;
+        background: var(--badge-available-bg);
+        color: var(--badge-available-text);
       }
 
       .warn {
-        background: #fce8be;
-        color: #8d5f00;
+        background: var(--badge-limited-bg);
+        color: var(--badge-limited-text);
       }
 
       .danger {
-        background: #f8d5d5;
-        color: #943232;
+        background: var(--badge-full-bg);
+        color: var(--badge-full-text);
       }
     `
   ]
