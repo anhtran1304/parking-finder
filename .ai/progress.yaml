@@ -1,6 +1,6 @@
 version: 3
-last_updated: 2026-06-01
-current_phase: phase_3_user_journey
+last_updated: 2026-08-07
+current_phase: phase_4_realtime
 
 phases:
   phase_1_core_search:
@@ -88,7 +88,7 @@ phases:
         note: "Wire search bar to filter parking list by name/address"
 
   phase_3_user_journey:
-    status: in_progress
+    status: done
     note: "Auth + booking lifecycle — must come BEFORE realtime (WS needs identity)"
     backend_tasks:
       - id: basic_auth_jwt
@@ -155,7 +155,10 @@ phases:
         note: "Timeline now filters to only past bookings (COMPLETED/CANCELLED/EXPIRED); active/pending bookings promoted to separate section"
       - id: booking_detail_consumer_ui
         status: done
-        note: "Redesigned from admin-CRUD to consumer reservation detail: hero section (parking name, status, countdown, distance), promoted actions with cancel stub, card-based reservation summary, sentence case throughout, Booking ID de-emphasized to Ref #N subtitle"
+        note: "Redesigned from admin-CRUD to consumer reservation detail: hero section (parking name, status, countdown, distance), promoted actions, card-based reservation summary, sentence case throughout, Booking ID de-emphasized to Ref #N subtitle"
+      - id: cancel_booking_flow
+        status: done
+        note: "Frontend cancel action uses a destructive confirmation dialog, calls the ownership-scoped cancel API, prevents duplicate requests, refreshes local availability and booking state, and surfaces status-specific errors"
 
   phase_4_realtime:
     status: pending

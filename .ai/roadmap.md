@@ -1,6 +1,6 @@
 # Parking Finder Roadmap
 
-Last reviewed: 2026-05-27
+Last reviewed: 2026-08-07
 
 Source of truth for detailed task status:
 - .ai/progress.yaml
@@ -32,23 +32,17 @@ Frontend highlights:
 - search/filter basics
 
 ## Phase 3: User Journey
-Status: in progress
+Status: done
 
-Backend completed:
-- basic_auth_jwt
-- current_user_endpoint
-- booking_history_api (paginated + optional status filter, scoped to authenticated user)
-- API documentation standardized with Swagger/OpenAPI and endpoint annotations
+Backend highlights:
+- JWT authentication and current-user endpoint
+- Paginated booking history, active booking, and booking detail APIs scoped to the authenticated user
+- Ownership-safe cancellation and standardized Swagger/OpenAPI documentation
 
-Backend pending:
-- active_booking_api
-
-Frontend pending:
-- sign_in_page
-- sign_up_page
-- auth_state_management (interceptor + guards)
-- current_booking_view
-- booking_history_view
+Frontend highlights:
+- Map-persistent sign-in/sign-up flow with token interceptor, guards, and return-to-booking intent
+- Profile, Booking Center, active reservation banner/card, booking detail drill-in, and responsive panel parity
+- Destructive cancel confirmation wired to the backend with local booking/availability synchronization
 
 ## Phase 4: Realtime
 Status: pending
@@ -69,5 +63,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Implement backend active booking API (GET /bookings/active)
-- Start frontend auth pages and token handling
+- Start Phase 4 with the backend WebSocket setup and availability event contract
+- Connect Redis pub/sub, then add the frontend WebSocket client and live slot updates
