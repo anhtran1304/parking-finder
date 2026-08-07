@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 class ParkingRepositoryIntegrationTest {
 
   @Autowired private ParkingRepository parkingRepository;
+  private Long parkingId;
 
   @BeforeEach
   void setUp() {
@@ -35,8 +36,9 @@ class ParkingRepositoryIntegrationTest {
     parking.setLocation(location);
     parking.setTotalSlots(100);
     parking.setAvailableSlots(80);
+    parking.setCreatedAt(Instant.now());
     parking.setUpdatedAt(Instant.now());
-    parkingRepository.save(parking);
+    parkingId = parkingRepository.save(parking).getId();
   }
 
   @Test
@@ -44,5 +46,43 @@ class ParkingRepositoryIntegrationTest {
     List<NearbyParkingProjection> results = parkingRepository.findNearby(10.7001, 106.7001, 500);
     assertThat(results).isNotEmpty();
     assertThat(results.get(0).getName()).isEqualTo("Center Parking");
+  }
+
+  @Test
+  void decrementAvailableSlot_shouldUpdateValueAndTimestampWithDatabaseGuard() {
+    Parking parking = parkingRepository.findById(parkingId).orElseThrow();
+    Instant updatedAt = Instant.now().plusSeconds(10);
+
+    int updated = parkingRepository.decrementAvailableSlot(parking.getId(), updatedAt);
+    Parking refreshed = parkingRepository.findById(parking.getId()).orElseThrow();
+
+    assertThat(updated).isEqualTo(1);
+    assertThat(refreshed.getAvailableSlots()).isEqualTo(79);
+    assertThat(refreshed.getUpdatedAt()).isEqualTo(updatedAt);
+  }
+
+  @Test
+  void incrementAvailableSlot_shouldNeverExceedTotalSlots() {
+    Parking parking = parkingRepository.findById(parkingId).orElseThrow();
+    parking.setAvailableSlots(parking.getTotalSlots());
+    parkingRepository.saveAndFlush(parking);
+
+    parkingRepository.incrementAvailableSlot(parking.getId(), Instant.now());
+    Parking refreshed = parkingRepository.findById(parking.getId()).orElseThrow();
+
+    assertThat(refreshed.getAvailableSlots()).isEqualTo(refreshed.getTotalSlots());
+  }
+
+  @Test
+  void decrementAvailableSlot_shouldNeverGoBelowZero() {
+    Parking parking = parkingRepository.findById(parkingId).orElseThrow();
+    parking.setAvailableSlots(0);
+    parkingRepository.saveAndFlush(parking);
+
+    int updated = parkingRepository.decrementAvailableSlot(parking.getId(), Instant.now());
+    Parking refreshed = parkingRepository.findById(parking.getId()).orElseThrow();
+
+    assertThat(updated).isZero();
+    assertThat(refreshed.getAvailableSlots()).isZero();
   }
 }

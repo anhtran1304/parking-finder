@@ -1,6 +1,7 @@
 package com.parkingfinder.repository;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.parkingfinder.domain.Parking;
+import com.parkingfinder.dto.ParkingAvailabilitySnapshot;
 
 public interface ParkingRepository extends JpaRepository<Parking, Long> {
 
@@ -41,6 +43,17 @@ public interface ParkingRepository extends JpaRepository<Parking, Long> {
   List<NearbyParkingProjection> findNearby(
       @Param("lat") double lat, @Param("lng") double lng, @Param("radiusMeters") double radiusMeters);
 
+  @Query(
+      """
+      SELECT new com.parkingfinder.dto.ParkingAvailabilitySnapshot(
+        p.id, p.availableSlots, p.totalSlots, p.updatedAt
+      )
+      FROM Parking p
+      WHERE p.id IN :parkingIds
+      """)
+  List<ParkingAvailabilitySnapshot> findAvailabilitySnapshots(
+      @Param("parkingIds") Collection<Long> parkingIds);
+
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query(
       """
@@ -50,4 +63,17 @@ public interface ParkingRepository extends JpaRepository<Parking, Long> {
       WHERE p.id = :parkingId AND p.availableSlots > 0
       """)
   int decrementAvailableSlot(@Param("parkingId") Long parkingId, @Param("updatedAt") Instant updatedAt);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      UPDATE Parking p
+      SET p.availableSlots = CASE
+            WHEN p.availableSlots < p.totalSlots THEN p.availableSlots + 1
+            ELSE p.totalSlots
+          END,
+          p.updatedAt = :updatedAt
+      WHERE p.id = :parkingId
+      """)
+  int incrementAvailableSlot(@Param("parkingId") Long parkingId, @Param("updatedAt") Instant updatedAt);
 }

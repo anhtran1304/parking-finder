@@ -2,6 +2,7 @@ package com.parkingfinder.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.locationtech.jts.geom.Coordinate;
@@ -14,6 +15,7 @@ import com.parkingfinder.domain.Parking;
 import com.parkingfinder.dto.CreateParkingRequest;
 import com.parkingfinder.dto.NearbyParkingResponse;
 import com.parkingfinder.dto.ParkingDetailResponse;
+import com.parkingfinder.dto.ParkingAvailabilitySnapshot;
 import com.parkingfinder.exception.ResourceNotFoundException;
 import com.parkingfinder.repository.NearbyParkingProjection;
 import com.parkingfinder.repository.ParkingRepository;
@@ -27,25 +29,32 @@ public class ParkingService {
   private final ParkingRepository parkingRepository;
   private final ParkingCacheService parkingCacheService;
   private final SlotCounterService slotCounterService;
+  private final ParkingAvailabilityService parkingAvailabilityService;
 
   @Transactional(readOnly = true)
   public List<NearbyParkingResponse> getNearby(double lat, double lng, double radiusMeters) {
-    return parkingCacheService
+    List<NearbyParkingResponse> responses = parkingCacheService
         .getNearby(lat, lng, radiusMeters)
         .orElseGet(
             () -> {
-              List<NearbyParkingResponse> responses =
+              List<NearbyParkingResponse> discovered =
                   parkingRepository.findNearby(lat, lng, radiusMeters).stream()
                       .map(this::toNearbyResponse)
                       .toList();
-              parkingCacheService.saveNearby(lat, lng, radiusMeters, responses);
-              return responses;
+              parkingCacheService.saveNearby(lat, lng, radiusMeters, discovered);
+              return discovered;
             });
+    Map<Long, ParkingAvailabilitySnapshot> snapshots =
+        parkingAvailabilityService.getSnapshots(
+            responses.stream().map(NearbyParkingResponse::id).toList());
+    return responses.stream()
+        .map(response -> overlayAvailability(response, snapshots.get(response.id())))
+        .toList();
   }
 
   @Transactional(readOnly = true)
   public ParkingDetailResponse getById(Long id) {
-    return parkingCacheService
+    ParkingDetailResponse response = parkingCacheService
         .getParkingDetail(id)
         .orElseGet(
             () -> {
@@ -53,10 +62,13 @@ public class ParkingService {
                   parkingRepository
                       .findById(id)
                       .orElseThrow(() -> new ResourceNotFoundException("Parking not found: " + id));
-              ParkingDetailResponse response = toDetailResponse(parking);
-              parkingCacheService.saveParkingDetail(response);
-              return response;
+              ParkingDetailResponse detail = toDetailResponse(parking);
+              parkingCacheService.saveParkingDetail(detail);
+              return detail;
             });
+    ParkingAvailabilitySnapshot snapshot =
+        parkingAvailabilityService.getSnapshots(List.of(id)).get(id);
+    return overlayAvailability(response, snapshot);
   }
 
   @Transactional
@@ -110,5 +122,44 @@ public class ParkingService {
         parking.getLocation().getY(),
         parking.getLocation().getX(),
         parking.getUpdatedAt());
+  }
+
+  private NearbyParkingResponse overlayAvailability(
+      NearbyParkingResponse response, ParkingAvailabilitySnapshot snapshot) {
+    if (snapshot == null) {
+      return response;
+    }
+    return new NearbyParkingResponse(
+        response.id(),
+        response.name(),
+        snapshot.totalSlots(),
+        snapshot.availableSlots(),
+        response.lat(),
+        response.lng(),
+        response.distanceMeters(),
+        snapshot.updatedAt(),
+        response.hourlyRate(),
+        response.parkingType(),
+        response.hasEvCharging(),
+        response.hasSecurity(),
+        response.hasRoof(),
+        response.rating(),
+        response.reviewCount());
+  }
+
+  private ParkingDetailResponse overlayAvailability(
+      ParkingDetailResponse response, ParkingAvailabilitySnapshot snapshot) {
+    if (snapshot == null) {
+      return response;
+    }
+    return new ParkingDetailResponse(
+        response.id(),
+        response.name(),
+        response.address(),
+        snapshot.totalSlots(),
+        snapshot.availableSlots(),
+        response.lat(),
+        response.lng(),
+        snapshot.updatedAt());
   }
 }

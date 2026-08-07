@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.parkingfinder.domain.Booking;
 import com.parkingfinder.domain.BookingStatus;
+import com.parkingfinder.event.ParkingAvailabilityChangeReason;
 import com.parkingfinder.repository.BookingRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 public class BookingLifecycleScheduler {
 
   private final BookingRepository bookingRepository;
-  private final SlotCounterService slotCounterService;
+  private final ParkingAvailabilityService parkingAvailabilityService;
 
   @Scheduled(fixedDelay = 60_000)
   @Transactional
@@ -57,7 +58,11 @@ public class BookingLifecycleScheduler {
     }
 
     for (Booking booking : expirable) {
-      slotCounterService.releaseSlot(booking.getParkingId());
+      ParkingAvailabilityChangeReason reason =
+          booking.getStatus() == BookingStatus.ACTIVE
+              ? ParkingAvailabilityChangeReason.BOOKING_COMPLETED
+              : ParkingAvailabilityChangeReason.BOOKING_EXPIRED;
+      parkingAvailabilityService.releaseSlot(booking.getParkingId(), reason);
     }
 
     log.info(

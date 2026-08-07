@@ -14,23 +14,21 @@ import com.parkingfinder.domain.Parking;
 import com.parkingfinder.dto.BookingDetailResponse;
 import com.parkingfinder.dto.BookingResponse;
 import com.parkingfinder.dto.CreateBookingRequest;
-import com.parkingfinder.exception.BookingReservationUnavailableException;
+import com.parkingfinder.event.ParkingAvailabilityChangeReason;
 import com.parkingfinder.exception.NoAvailableSlotException;
 import com.parkingfinder.exception.ResourceNotFoundException;
 import com.parkingfinder.repository.BookingRepository;
 import com.parkingfinder.repository.ParkingRepository;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class BookingService {
 
   private final BookingRepository bookingRepository;
   private final ParkingRepository parkingRepository;
-  private final SlotCounterService slotCounterService;
+  private final ParkingAvailabilityService parkingAvailabilityService;
 
   @Transactional
   public BookingResponse createBooking(CreateBookingRequest request, String userId) {
@@ -48,13 +46,12 @@ public class BookingService {
                     new ResourceNotFoundException(
                         "Parking not found: " + request.parkingId()));
 
-    long activeBookings = bookingRepository.countActiveBookings(parking.getId());
-    long remainingSlots = parking.getTotalSlots() - activeBookings;
-    if (remainingSlots <= 0) {
+    if (parking.getAvailableSlots() <= 0) {
       throw new NoAvailableSlotException("No available slot for parkingId=" + parking.getId());
     }
 
-    boolean reserved = tryReserveSlot(parking.getId(), (int) remainingSlots);
+    boolean reserved =
+        parkingAvailabilityService.reserveSlot(parking.getId(), parking.getAvailableSlots());
     if (!reserved) {
       throw new NoAvailableSlotException("No available slot for parkingId=" + parking.getId());
     }
@@ -67,13 +64,7 @@ public class BookingService {
     booking.setStatus(BookingStatus.PENDING);
     booking.setCreatedAt(Instant.now());
 
-    Booking saved;
-    try {
-      saved = bookingRepository.save(booking);
-    } catch (RuntimeException ex) {
-      rollbackReserve(parking.getId(), ex);
-      throw ex;
-    }
+    Booking saved = bookingRepository.save(booking);
 
     return toResponse(saved);
   }
@@ -141,27 +132,6 @@ public class BookingService {
     }
   }
 
-  private boolean tryReserveSlot(Long parkingId, int remainingSlots) {
-    try {
-      return slotCounterService.tryReserveSlot(parkingId, remainingSlots);
-    } catch (RuntimeException ex) {
-      throw new BookingReservationUnavailableException(
-          "Booking reservation system unavailable", ex);
-    }
-  }
-
-  private void rollbackReserve(Long parkingId, RuntimeException originalFailure) {
-    try {
-      slotCounterService.rollbackReserve(parkingId);
-    } catch (RuntimeException rollbackFailure) {
-      log.error(
-          "Failed to roll back Redis slot reservation for parkingId={} after DB booking failure",
-          parkingId,
-          rollbackFailure);
-      originalFailure.addSuppressed(rollbackFailure);
-    }
-  }
-
   private BookingResponse toResponse(Booking booking) {
     return new BookingResponse(
         booking.getId(),
@@ -207,7 +177,8 @@ public class BookingService {
 
     booking.setStatus(BookingStatus.CANCELLED);
     Booking saved = bookingRepository.save(booking);
-    slotCounterService.releaseSlot(booking.getParkingId());
+    parkingAvailabilityService.releaseSlot(
+        booking.getParkingId(), ParkingAvailabilityChangeReason.BOOKING_CANCELLED);
 
     return toResponse(saved);
   }

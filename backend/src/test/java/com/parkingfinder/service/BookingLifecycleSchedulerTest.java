@@ -18,19 +18,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.parkingfinder.domain.Booking;
 import com.parkingfinder.domain.BookingStatus;
+import com.parkingfinder.event.ParkingAvailabilityChangeReason;
 import com.parkingfinder.repository.BookingRepository;
 
 @ExtendWith(MockitoExtension.class)
 class BookingLifecycleSchedulerTest {
 
   @Mock private BookingRepository bookingRepository;
-  @Mock private SlotCounterService slotCounterService;
+  @Mock private ParkingAvailabilityService parkingAvailabilityService;
 
   private BookingLifecycleScheduler scheduler;
 
   @BeforeEach
   void setUp() {
-    scheduler = new BookingLifecycleScheduler(bookingRepository, slotCounterService);
+    scheduler = new BookingLifecycleScheduler(bookingRepository, parkingAvailabilityService);
   }
 
   @Test
@@ -66,8 +67,10 @@ class BookingLifecycleSchedulerTest {
         .bulkUpdateStatus(argThat(ids -> ids.contains(1L)), eq(BookingStatus.COMPLETED));
     verify(bookingRepository)
         .bulkUpdateStatus(argThat(ids -> ids.contains(2L)), eq(BookingStatus.EXPIRED));
-    verify(slotCounterService).releaseSlot(10L);
-    verify(slotCounterService).releaseSlot(20L);
+    verify(parkingAvailabilityService)
+        .releaseSlot(10L, ParkingAvailabilityChangeReason.BOOKING_COMPLETED);
+    verify(parkingAvailabilityService)
+        .releaseSlot(20L, ParkingAvailabilityChangeReason.BOOKING_EXPIRED);
   }
 
   @Test
@@ -80,7 +83,8 @@ class BookingLifecycleSchedulerTest {
 
     scheduler.expireBookings();
 
-    verify(slotCounterService, times(2)).releaseSlot(5L);
+    verify(parkingAvailabilityService, times(2))
+        .releaseSlot(5L, ParkingAvailabilityChangeReason.BOOKING_COMPLETED);
   }
 
   @Test
@@ -90,7 +94,7 @@ class BookingLifecycleSchedulerTest {
     scheduler.expireBookings();
 
     verify(bookingRepository, never()).bulkUpdateStatus(any(), any());
-    verify(slotCounterService, never()).releaseSlot(any());
+    verify(parkingAvailabilityService, never()).releaseSlot(any(), any());
   }
 
   @Test

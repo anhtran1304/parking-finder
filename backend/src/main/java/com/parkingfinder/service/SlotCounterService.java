@@ -45,10 +45,6 @@ public class SlotCounterService {
     redisTemplate.opsForValue().increment(slotKey(parkingId));
   }
 
-  public void releaseSlot(Long parkingId) {
-    redisTemplate.opsForValue().increment(slotKey(parkingId));
-  }
-
   public void syncSlot(Long parkingId, int availableSlots) {
     redisTemplate.opsForValue().set(slotKey(parkingId), String.valueOf(Math.max(availableSlots, 0)));
   }

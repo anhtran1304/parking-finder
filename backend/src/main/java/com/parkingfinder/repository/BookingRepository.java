@@ -25,18 +25,6 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
       findFirstByUserIdAndStatusAndStartTimeLessThanEqualAndEndTimeGreaterThanOrderByStartTimeDesc(
           String userId, BookingStatus status, Instant startTime, Instant endTime);
 
-  @Query(
-      """
-      SELECT COUNT(b)
-      FROM Booking b
-      WHERE b.parkingId = :parkingId
-      AND b.status IN (
-        com.parkingfinder.domain.BookingStatus.PENDING,
-        com.parkingfinder.domain.BookingStatus.ACTIVE
-      )
-      """)
-  long countActiveBookings(@Param("parkingId") Long parkingId);
-
   @Modifying(clearAutomatically = true)
   @Transactional
   @Query(

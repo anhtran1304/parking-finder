@@ -45,9 +45,12 @@ Frontend highlights:
 - Destructive cancel confirmation wired to the backend with local booking/availability synchronization
 
 ## Phase 4: Realtime
-Status: pending
+Status: in progress
 
-Planned:
+Completed:
+- availability consistency baseline: PostgreSQL bounds, Redis compensation, after-commit absolute events, and fresh REST availability overlays
+
+Planned next:
 - websocket setup
 - Redis pub/sub
 - frontend websocket client and live slot updates
@@ -63,5 +66,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Start Phase 4 with the backend WebSocket setup and availability event contract
-- Connect Redis pub/sub, then add the frontend WebSocket client and live slot updates
+- Implement P4-02: Spring WebSocket/STOMP endpoint, topic, heartbeat, security, and contract tests
+- Continue one Phase 4 ticket per implementation turn

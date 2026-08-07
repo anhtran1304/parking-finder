@@ -44,13 +44,14 @@ class BookingServiceTest {
 
   @Mock private BookingRepository bookingRepository;
   @Mock private ParkingRepository parkingRepository;
-  @Mock private SlotCounterService slotCounterService;
+  @Mock private ParkingAvailabilityService parkingAvailabilityService;
 
   private BookingService bookingService;
 
   @BeforeEach
   void setUp() {
-    bookingService = new BookingService(bookingRepository, parkingRepository, slotCounterService);
+    bookingService =
+        new BookingService(bookingRepository, parkingRepository, parkingAvailabilityService);
   }
 
   @Test
@@ -60,8 +61,7 @@ class BookingServiceTest {
         new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
-    when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
-    when(slotCounterService.tryReserveSlot(1L, 1)).thenReturn(true);
+    when(parkingAvailabilityService.reserveSlot(1L, 2)).thenReturn(true);
 
     Booking saved = new Booking();
     saved.setId(100L);
@@ -78,22 +78,21 @@ class BookingServiceTest {
 
     assertThat(response.id()).isEqualTo(100L);
     assertThat(response.status()).isEqualTo(BookingStatus.PENDING);
-    verify(slotCounterService).tryReserveSlot(1L, 1);
+    verify(parkingAvailabilityService).reserveSlot(1L, 2);
   }
 
   @Test
   void createBooking_shouldThrow_whenNoAvailableSlotInDatabase() {
-    Parking parking = parking(1L, 1, 1);
+    Parking parking = parking(1L, 1, 0);
     CreateBookingRequest request =
         new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
-    when(bookingRepository.countActiveBookings(1L)).thenReturn(1L);
 
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-2"))
         .isInstanceOf(NoAvailableSlotException.class);
 
-    verify(slotCounterService, never()).tryReserveSlot(any(), anyInt());
+    verify(parkingAvailabilityService, never()).reserveSlot(any(), anyInt());
     verify(bookingRepository, never()).save(any());
   }
 
@@ -104,8 +103,7 @@ class BookingServiceTest {
         new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
-    when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
-    when(slotCounterService.tryReserveSlot(1L, 2)).thenReturn(false);
+    when(parkingAvailabilityService.reserveSlot(1L, 2)).thenReturn(false);
 
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-4"))
         .isInstanceOf(NoAvailableSlotException.class);
@@ -114,20 +112,19 @@ class BookingServiceTest {
   }
 
   @Test
-  void createBooking_shouldRollbackRedisReserve_whenDatabaseSaveFails() {
+  void createBooking_shouldPropagateDatabaseSaveFailure_afterAvailabilityReservation() {
     Parking parking = parking(1L, 2, 2);
     CreateBookingRequest request =
         new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
     RuntimeException dbFailure = new RuntimeException("db unavailable");
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
-    when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
-    when(slotCounterService.tryReserveSlot(1L, 2)).thenReturn(true);
+    when(parkingAvailabilityService.reserveSlot(1L, 2)).thenReturn(true);
     when(bookingRepository.save(any(Booking.class))).thenThrow(dbFailure);
 
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-5")).isSameAs(dbFailure);
 
-    verify(slotCounterService).rollbackReserve(1L);
+    verify(parkingAvailabilityService).reserveSlot(1L, 2);
   }
 
   @Test
@@ -137,8 +134,10 @@ class BookingServiceTest {
         new CreateBookingRequest(1L, Instant.now().plusSeconds(300), Instant.now().plusSeconds(3900));
 
     when(parkingRepository.findById(1L)).thenReturn(Optional.of(parking));
-    when(bookingRepository.countActiveBookings(1L)).thenReturn(0L);
-    when(slotCounterService.tryReserveSlot(1L, 2)).thenThrow(new RuntimeException("redis down"));
+    when(parkingAvailabilityService.reserveSlot(1L, 2))
+        .thenThrow(
+            new BookingReservationUnavailableException(
+                "Booking reservation system unavailable", new RuntimeException("redis down")));
 
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-6"))
         .isInstanceOf(BookingReservationUnavailableException.class)
@@ -157,7 +156,7 @@ class BookingServiceTest {
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-7"))
         .isInstanceOf(ResourceNotFoundException.class);
 
-    verifyNoInteractions(slotCounterService);
+    verifyNoInteractions(parkingAvailabilityService);
     verify(bookingRepository, never()).save(any());
   }
 
@@ -171,7 +170,7 @@ class BookingServiceTest {
     assertThatThrownBy(() -> bookingService.createBooking(request, "user-3"))
         .isInstanceOf(IllegalArgumentException.class);
 
-    verifyNoInteractions(parkingRepository, bookingRepository, slotCounterService);
+    verifyNoInteractions(parkingRepository, bookingRepository, parkingAvailabilityService);
   }
 
   @Test
@@ -305,7 +304,10 @@ class BookingServiceTest {
     BookingResponse response = bookingService.cancelBookingForUser(10L, "user-1");
 
     assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
-    verify(slotCounterService).releaseSlot(1L);
+    verify(parkingAvailabilityService)
+        .releaseSlot(
+            1L,
+            com.parkingfinder.event.ParkingAvailabilityChangeReason.BOOKING_CANCELLED);
   }
 
   @Test
@@ -325,7 +327,10 @@ class BookingServiceTest {
     BookingResponse response = bookingService.cancelBookingForUser(11L, "user-2");
 
     assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
-    verify(slotCounterService).releaseSlot(2L);
+    verify(parkingAvailabilityService)
+        .releaseSlot(
+            2L,
+            com.parkingfinder.event.ParkingAvailabilityChangeReason.BOOKING_CANCELLED);
   }
 
   @Test
@@ -343,7 +348,7 @@ class BookingServiceTest {
         .hasMessageContaining("COMPLETED");
 
     verify(bookingRepository, never()).save(any());
-    verify(slotCounterService, never()).releaseSlot(any());
+    verify(parkingAvailabilityService, never()).releaseSlot(any(), any());
   }
 
   private Parking parking(Long id, int totalSlots, int availableSlots) {
@@ -434,7 +439,10 @@ class BookingServiceTest {
     BookingResponse response = bookingService.cancelBookingForUser(60L, "owner@example.com");
 
     assertThat(response.status()).isEqualTo(BookingStatus.CANCELLED);
-    verify(slotCounterService).releaseSlot(5L);
+    verify(parkingAvailabilityService)
+        .releaseSlot(
+            5L,
+            com.parkingfinder.event.ParkingAvailabilityChangeReason.BOOKING_CANCELLED);
   }
 
   @Test
@@ -461,6 +469,6 @@ class BookingServiceTest {
         .hasMessageContaining("61");
 
     verify(bookingRepository, never()).save(any());
-    verify(slotCounterService, never()).releaseSlot(any());
+    verify(parkingAvailabilityService, never()).releaseSlot(any(), any());
   }
 }

@@ -161,9 +161,12 @@ phases:
         note: "Frontend cancel action uses a destructive confirmation dialog, calls the ownership-scoped cancel API, prevents duplicate requests, refreshes local availability and booking state, and surfaces status-specific errors"
 
   phase_4_realtime:
-    status: pending
-    note: "Meaningful only after user identity + booking state exist"
+    status: in_progress
+    note: "Availability consistency baseline complete; WebSocket transport is next"
     backend_tasks:
+      - id: availability_consistency_baseline
+        status: done
+        note: "PostgreSQL owns bounded availability; Redis reservation is compensated on rollback; after-commit absolute events refresh Redis projections; REST overlays fresh DB availability on cached parking metadata"
       - id: websocket_setup
         status: pending
       - id: redis_pubsub
@@ -171,6 +174,8 @@ phases:
       - id: simulate_occupancy
         status: pending
         note: "Admin endpoint to +1/-1 car for live demo — triggers realtime push"
+      - id: phase_4_closeout
+        status: pending
     frontend_tasks:
       - id: websocket_client
         status: pending
