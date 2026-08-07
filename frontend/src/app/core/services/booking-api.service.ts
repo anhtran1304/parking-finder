@@ -48,6 +48,13 @@ export class BookingApiService {
     });
   }
 
+  cancelBooking(bookingId: number): Observable<BookingResponse> {
+    return this.http.patch<BookingResponse>(`${this.baseUrl}/bookings/${bookingId}/cancel`, null, {
+      headers: this.authorizationHeaders(),
+      withCredentials: true,
+    });
+  }
+
   private authorizationHeaders(): HttpHeaders {
     const token = this.authSessionService.getValidSession()?.accessToken;
     return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();

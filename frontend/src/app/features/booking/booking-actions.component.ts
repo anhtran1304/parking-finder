@@ -16,9 +16,14 @@ type BookingStatus = BookingResponse['status'];
           <app-icon name="navigation" [size]="15" [strokeWidth]="2" />
           Navigate
         </button>
-        <button class="pf-button pf-button--danger-soft pf-button--sm" type="button" (click)="cancelClicked.emit()">
+        <button
+          class="pf-button pf-button--danger-soft pf-button--sm"
+          type="button"
+          [disabled]="cancelLoading"
+          (click)="cancelClicked.emit()"
+        >
           <app-icon name="ban" [size]="15" [strokeWidth]="2" />
-          Cancel booking
+          {{ cancelLoading ? 'Cancelling…' : 'Cancel booking' }}
         </button>
         <button
           class="pf-button pf-button--secondary pf-button--sm pf-button--wide"
@@ -35,9 +40,14 @@ type BookingStatus = BookingResponse['status'];
           <app-icon name="navigation" [size]="15" [strokeWidth]="2" />
           Navigate
         </button>
-        <button class="pf-button pf-button--danger-soft pf-button--sm" type="button" (click)="cancelClicked.emit()">
+        <button
+          class="pf-button pf-button--danger-soft pf-button--sm"
+          type="button"
+          [disabled]="cancelLoading"
+          (click)="cancelClicked.emit()"
+        >
           <app-icon name="x-circle" [size]="15" [strokeWidth]="2" />
-          Cancel booking
+          {{ cancelLoading ? 'Cancelling…' : 'Cancel booking' }}
         </button>
       } @else {
         <button class="pf-button pf-button--primary pf-button--sm" type="button" (click)="bookAgainClicked.emit()">
@@ -68,6 +78,7 @@ type BookingStatus = BookingResponse['status'];
 })
 export class BookingActionsComponent {
   @Input() status: BookingStatus = 'PENDING';
+  @Input() cancelLoading = false;
   @Output() navigateClicked = new EventEmitter<void>();
   @Output() viewParkingClicked = new EventEmitter<void>();
   @Output() bookAgainClicked = new EventEmitter<void>();

@@ -121,11 +121,12 @@ type BookingDetailReturnTarget = 'history' | 'map';
         class="shell__booking-detail"
         [bookingId]="bookingId"
         [parkings]="parkings()"
+        [cancelLoading]="cancelInFlight()"
         (closed)="onBookingDetailClosed()"
         (navigateRequested)="onBookingDetailNavigate($event)"
         (viewParkingRequested)="onBookingDetailViewParking($event)"
         (bookAgainRequested)="onBookingDetailBookAgain($event)"
-        (cancelRequested)="onBookingDetailCancel()"
+        (cancelRequested)="onBookingDetailCancel($event)"
       ></app-booking-detail>
 
       <app-detail-panel
@@ -370,6 +371,7 @@ export class ShellComponent implements OnInit {
   readonly activeFilters = signal<ParkingFilter[]>([]);
   readonly searchQuery = signal('');
   readonly bookingInFlight = signal(false);
+  readonly cancelInFlight = signal(false);
   readonly bookingFeedback = signal<BookingFeedback | null>(null);
   readonly activeBooking = signal<BookingDetailResponse | null>(null);
   readonly dismissedActiveBookingId = signal<number | null>(null);
@@ -697,10 +699,28 @@ export class ShellComponent implements OnInit {
     this.onHistoryBookAgain(parkingId);
   }
 
-  onBookingDetailCancel(): void {
-    this.bookingFeedback.set({
-      type: 'error',
-      message: 'Cancel booking is coming soon.',
+  onBookingDetailCancel(booking: BookingDetailResponse): void {
+    if (this.cancelInFlight()) {
+      return;
+    }
+
+    const ref = this.dialogService.open<boolean>({
+      title: 'Cancel booking?',
+      description: 'This will release your parking spot and cannot be undone.',
+      confirmText: 'Cancel booking',
+      cancelText: 'Keep booking',
+      variant: 'destructive',
+      icon: 'ban',
+      closeOnBackdrop: true,
+      showClose: true,
+      backdrop: 'subtle',
+      position: 'center',
+    });
+
+    ref.afterClosed$.subscribe((confirmed) => {
+      if (confirmed) {
+        this.cancelBooking(booking);
+      }
     });
   }
 
@@ -1017,6 +1037,68 @@ export class ShellComponent implements OnInit {
     }
   }
 
+  private applyReleasedSlot(parkingId: number): void {
+    let updatedSelection: NearbyParkingResponse | null = null;
+
+    const updated = this.parkings().map((parking) => {
+      if (parking.id !== parkingId) {
+        return parking;
+      }
+
+      const next = {
+        ...parking,
+        availableSlots: Math.min(parking.availableSlots + 1, parking.totalSlots),
+        updatedAt: new Date().toISOString(),
+      };
+      updatedSelection = next;
+      return next;
+    });
+
+    this.parkings.set(updated);
+    if (updatedSelection && this.selectedParking()?.id === parkingId) {
+      this.selectedParking.set(updatedSelection);
+    }
+  }
+
+  private cancelBooking(booking: BookingDetailResponse): void {
+    if (this.cancelInFlight()) {
+      return;
+    }
+
+    this.cancelInFlight.set(true);
+    this.bookingFeedback.set(null);
+
+    this.bookingApiService
+      .cancelBooking(booking.id)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          this.bookingFeedback.set({
+            type: 'error',
+            message: this.cancelBookingErrorMessage(error),
+          });
+          return of(null);
+        }),
+        finalize(() => this.cancelInFlight.set(false))
+      )
+      .subscribe((response) => {
+        if (!response) {
+          return;
+        }
+
+        this.applyReleasedSlot(response.parkingId);
+        this.parkingApiService.evictParkingDetail(response.parkingId);
+        if (this.activeBooking()?.id === response.id) {
+          this.activeBooking.set(null);
+          this.dismissedActiveBookingId.set(null);
+        }
+        this.bookingFeedback.set({
+          type: 'success',
+          message: `Booking #${response.id} cancelled. The parking slot is available again.`,
+        });
+        this.onBookingDetailClosed();
+      });
+  }
+
   private findParkingById(parkingId: number): NearbyParkingResponse | null {
     return this.parkings().find((parking) => parking.id === parkingId) ?? null;
   }
@@ -1036,6 +1118,19 @@ export class ShellComponent implements OnInit {
     }
 
     return error.error?.message ?? 'Booking failed. Please try again.';
+  }
+
+  private cancelBookingErrorMessage(error: HttpErrorResponse): string {
+    if (error.status === 400) {
+      return 'This booking can no longer be cancelled.';
+    }
+    if (error.status === 401) {
+      return 'Session expired. Please sign in again to continue.';
+    }
+    if (error.status === 404) {
+      return 'Booking not found or no longer available.';
+    }
+    return error.error?.message ?? 'Could not cancel booking. Please try again.';
   }
 
   private buildLocationLabel(parking: NearbyParkingResponse): string {

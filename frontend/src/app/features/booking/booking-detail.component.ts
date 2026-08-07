@@ -133,6 +133,7 @@ import { BookingActionsComponent } from './booking-actions.component';
         <div panelFooter class="pf-panel-footer">
           <app-booking-actions
             [status]="booking.status"
+            [cancelLoading]="cancelLoading"
             (navigateClicked)="navigateRequested.emit(booking)"
             (viewParkingClicked)="viewParkingRequested.emit(booking.parkingId)"
             (bookAgainClicked)="bookAgainRequested.emit(booking.parkingId)"
@@ -381,6 +382,7 @@ import { BookingActionsComponent } from './booking-actions.component';
   ],
 })
 export class BookingDetailComponent implements OnInit, OnDestroy {
+  @Input() cancelLoading = false;
   @Output() closed = new EventEmitter<void>();
   @Output() navigateRequested = new EventEmitter<BookingDetailResponse>();
   @Output() viewParkingRequested = new EventEmitter<number>();
