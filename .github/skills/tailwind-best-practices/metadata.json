@@ -1,0 +1,5 @@
+{
+  "version": "0.1.0",
+  "date": "February 2026",
+  "abstract": "Comprehensive guide for writing clean, performant, and maintainable Tailwind CSS. Contains rules across 7 categories covering configuration, performance, utility patterns, component extraction, responsive layout, v4 features, and accessibility. Each rule includes explanations and before/after code examples."
+}
