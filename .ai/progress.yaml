@@ -162,7 +162,7 @@ phases:
 
   phase_4_realtime:
     status: in_progress
-    note: "Availability consistency, WebSocket transport, and Redis Pub/Sub bridge complete; admin occupancy simulation is next"
+    note: "Backend realtime path and admin occupancy simulator complete; Angular WebSocket client is next"
     backend_tasks:
       - id: availability_consistency_baseline
         status: done
@@ -174,8 +174,8 @@ phases:
         status: done
         note: "After-commit availability events publish as JSON to parking.availability.v1; one exact-topic Redis subscriber per backend instance forwards them to the local STOMP broker with failure isolation"
       - id: simulate_occupancy
-        status: pending
-        note: "Admin endpoint to +1/-1 car for live demo — triggers realtime push"
+        status: done
+        note: "ROLE_ADMIN-protected ENTER/EXIT endpoint applies guarded PostgreSQL availability updates, Redis admission/compensation, and after-commit OCCUPANCY events"
       - id: phase_4_closeout
         status: pending
     frontend_tasks:

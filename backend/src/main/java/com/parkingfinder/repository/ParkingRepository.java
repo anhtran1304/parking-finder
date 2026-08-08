@@ -76,4 +76,15 @@ public interface ParkingRepository extends JpaRepository<Parking, Long> {
       WHERE p.id = :parkingId
       """)
   int incrementAvailableSlot(@Param("parkingId") Long parkingId, @Param("updatedAt") Instant updatedAt);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query(
+      """
+      UPDATE Parking p
+      SET p.availableSlots = p.availableSlots + 1,
+          p.updatedAt = :updatedAt
+      WHERE p.id = :parkingId AND p.availableSlots < p.totalSlots
+      """)
+  int incrementAvailableSlotIfBelowCapacity(
+      @Param("parkingId") Long parkingId, @Param("updatedAt") Instant updatedAt);
 }

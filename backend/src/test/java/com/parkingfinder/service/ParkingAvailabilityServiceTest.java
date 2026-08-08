@@ -8,11 +8,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.parkingfinder.domain.OccupancyAction;
 import com.parkingfinder.domain.Parking;
 import com.parkingfinder.dto.ParkingAvailabilitySnapshot;
 import com.parkingfinder.event.ParkingAvailabilityChangeReason;
 import com.parkingfinder.event.ParkingAvailabilityChanged;
+import com.parkingfinder.exception.AvailabilityUnavailableException;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
+import com.parkingfinder.exception.ResourceNotFoundException;
 import com.parkingfinder.repository.ParkingRepository;
 import java.time.Instant;
 import java.util.List;
@@ -161,6 +164,155 @@ class ParkingAvailabilityServiceTest {
 
     assertThat(result).containsEntry(3L, snapshot);
     verify(snapshotCache).put(snapshot);
+  }
+
+  @Test
+  void applyOccupancyEvent_enterShouldPublishAbsoluteEventOnlyAfterCommit() {
+    Parking before = parking(11L, 10, 4);
+    Parking after = parking(11L, 10, 3);
+    when(parkingRepository.findById(11L))
+        .thenReturn(Optional.of(before), Optional.of(after));
+    when(slotCounterService.tryReserveSlot(11L, 4)).thenReturn(true);
+    when(parkingRepository.decrementAvailableSlot(any(), any())).thenReturn(1);
+    TransactionSynchronizationManager.initSynchronization();
+
+    ParkingAvailabilitySnapshot snapshot =
+        service.applyOccupancyEvent(11L, OccupancyAction.ENTER);
+
+    assertThat(snapshot.availableSlots()).isEqualTo(3);
+    verifyNoInteractions(eventPublisher);
+
+    TransactionSynchronizationManager.getSynchronizations().get(0).afterCommit();
+
+    ArgumentCaptor<ParkingAvailabilityChanged> eventCaptor =
+        ArgumentCaptor.forClass(ParkingAvailabilityChanged.class);
+    verify(eventPublisher).publishEvent(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().availableSlots()).isEqualTo(3);
+    assertThat(eventCaptor.getValue().reason())
+        .isEqualTo(ParkingAvailabilityChangeReason.OCCUPANCY_ENTER);
+  }
+
+  @Test
+  void applyOccupancyEvent_enterShouldCompensateRedisWhenTransactionRollsBack() {
+    Parking before = parking(12L, 10, 4);
+    Parking after = parking(12L, 10, 3);
+    when(parkingRepository.findById(12L))
+        .thenReturn(Optional.of(before), Optional.of(after));
+    when(slotCounterService.tryReserveSlot(12L, 4)).thenReturn(true);
+    when(parkingRepository.decrementAvailableSlot(any(), any())).thenReturn(1);
+    TransactionSynchronizationManager.initSynchronization();
+
+    service.applyOccupancyEvent(12L, OccupancyAction.ENTER);
+    TransactionSynchronizationManager.getSynchronizations()
+        .get(0)
+        .afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+
+    verify(slotCounterService).rollbackReserve(12L);
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_enterShouldRejectEmptyParking() {
+    when(parkingRepository.findById(13L)).thenReturn(Optional.of(parking(13L, 10, 0)));
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(13L, OccupancyAction.ENTER))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Parking has no available slots");
+
+    verifyNoInteractions(slotCounterService, eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_enterShouldReconcileWhenDatabaseGuardRejects() {
+    Parking parking = parking(14L, 10, 1);
+    when(parkingRepository.findById(14L)).thenReturn(Optional.of(parking));
+    when(slotCounterService.tryReserveSlot(14L, 1)).thenReturn(true);
+    when(parkingRepository.decrementAvailableSlot(any(), any())).thenReturn(0);
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(14L, OccupancyAction.ENTER))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Parking has no available slots");
+
+    verify(slotCounterService).rollbackReserve(14L);
+    verify(slotCounterService).syncSlot(14L, 1);
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_enterShouldReturnUnavailableWhenRedisFails() {
+    when(parkingRepository.findById(15L)).thenReturn(Optional.of(parking(15L, 10, 4)));
+    when(slotCounterService.tryReserveSlot(15L, 4))
+        .thenThrow(new RuntimeException("redis down"));
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(15L, OccupancyAction.ENTER))
+        .isInstanceOf(AvailabilityUnavailableException.class)
+        .hasMessage("Parking availability system unavailable");
+
+    verify(parkingRepository, never()).decrementAvailableSlot(any(), any());
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_exitShouldIncrementAndPublishOnlyAfterCommit() {
+    Parking before = parking(21L, 10, 4);
+    Parking after = parking(21L, 10, 5);
+    when(parkingRepository.findById(21L))
+        .thenReturn(Optional.of(before), Optional.of(after));
+    when(parkingRepository.incrementAvailableSlotIfBelowCapacity(any(), any())).thenReturn(1);
+    TransactionSynchronizationManager.initSynchronization();
+
+    ParkingAvailabilitySnapshot snapshot =
+        service.applyOccupancyEvent(21L, OccupancyAction.EXIT);
+
+    assertThat(snapshot.availableSlots()).isEqualTo(5);
+    verifyNoInteractions(eventPublisher);
+
+    TransactionSynchronizationManager.getSynchronizations().get(0).afterCommit();
+
+    ArgumentCaptor<ParkingAvailabilityChanged> eventCaptor =
+        ArgumentCaptor.forClass(ParkingAvailabilityChanged.class);
+    verify(eventPublisher).publishEvent(eventCaptor.capture());
+    assertThat(eventCaptor.getValue().availableSlots()).isEqualTo(5);
+    assertThat(eventCaptor.getValue().reason())
+        .isEqualTo(ParkingAvailabilityChangeReason.OCCUPANCY_EXIT);
+  }
+
+  @Test
+  void applyOccupancyEvent_exitShouldRejectFullParking() {
+    when(parkingRepository.findById(22L)).thenReturn(Optional.of(parking(22L, 10, 10)));
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(22L, OccupancyAction.EXIT))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Parking is already at full availability");
+
+    verify(parkingRepository, never()).incrementAvailableSlotIfBelowCapacity(any(), any());
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_exitShouldRejectWhenDatabaseGuardLosesRace() {
+    Parking before = parking(23L, 10, 9);
+    Parking concurrentlyFilled = parking(23L, 10, 10);
+    when(parkingRepository.findById(23L))
+        .thenReturn(Optional.of(before), Optional.of(concurrentlyFilled));
+    when(parkingRepository.incrementAvailableSlotIfBelowCapacity(any(), any())).thenReturn(0);
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(23L, OccupancyAction.EXIT))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Parking is already at full availability");
+
+    verifyNoInteractions(eventPublisher);
+  }
+
+  @Test
+  void applyOccupancyEvent_shouldReturnNotFoundForMissingParking() {
+    when(parkingRepository.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.applyOccupancyEvent(99L, OccupancyAction.ENTER))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Parking not found: 99");
+
+    verifyNoInteractions(slotCounterService, eventPublisher);
   }
 
   private Parking parking(Long id, int totalSlots, int availableSlots) {

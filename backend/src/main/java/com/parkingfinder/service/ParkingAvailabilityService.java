@@ -1,9 +1,11 @@
 package com.parkingfinder.service;
 
+import com.parkingfinder.domain.OccupancyAction;
 import com.parkingfinder.domain.Parking;
 import com.parkingfinder.dto.ParkingAvailabilitySnapshot;
 import com.parkingfinder.event.ParkingAvailabilityChangeReason;
 import com.parkingfinder.event.ParkingAvailabilityChanged;
+import com.parkingfinder.exception.AvailabilityUnavailableException;
 import com.parkingfinder.exception.BookingReservationUnavailableException;
 import com.parkingfinder.exception.ResourceNotFoundException;
 import com.parkingfinder.repository.ParkingRepository;
@@ -13,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,39 +38,28 @@ public class ParkingAvailabilityService {
 
   @Transactional(propagation = Propagation.MANDATORY)
   public boolean reserveSlot(Long parkingId, int fallbackAvailableSlots) {
-    boolean reserved;
-    try {
-      reserved = slotCounterService.tryReserveSlot(parkingId, fallbackAvailableSlots);
-    } catch (RuntimeException exception) {
-      throw new BookingReservationUnavailableException(
-          "Booking reservation system unavailable", exception);
-    }
-    if (!reserved) {
-      return false;
+    return tryDecreaseSlot(
+            parkingId,
+            fallbackAvailableSlots,
+            ParkingAvailabilityChangeReason.BOOKING_CREATED,
+            exception ->
+                new BookingReservationUnavailableException(
+                    "Booking reservation system unavailable", exception))
+        != null;
+  }
+
+  @Transactional
+  public ParkingAvailabilitySnapshot applyOccupancyEvent(
+      Long parkingId, OccupancyAction action) {
+    if (action == null) {
+      throw new IllegalArgumentException("Occupancy action is required");
     }
 
-    Instant updatedAt = Instant.now();
-    try {
-      if (parkingRepository.decrementAvailableSlot(parkingId, updatedAt) == 0) {
-        rollbackReservation(parkingId);
-        syncCounter(currentParking(parkingId));
-        return false;
-      }
-
-      ParkingAvailabilityChanged event =
-          toEvent(currentParking(parkingId), ParkingAvailabilityChangeReason.BOOKING_CREATED);
-      publishAfterTransaction(
-          event,
-          status -> {
-            if (status != TransactionSynchronization.STATUS_COMMITTED) {
-              rollbackReservation(parkingId);
-            }
-          });
-      return true;
-    } catch (RuntimeException exception) {
-      rollbackReservation(parkingId);
-      throw exception;
-    }
+    Parking parking = currentParking(parkingId);
+    return switch (action) {
+      case ENTER -> simulateEnter(parking);
+      case EXIT -> simulateExit(parking);
+    };
   }
 
   @Transactional(propagation = Propagation.MANDATORY)
@@ -99,6 +91,82 @@ public class ParkingAvailabilityService {
     return parkingRepository
         .findById(parkingId)
         .orElseThrow(() -> new ResourceNotFoundException("Parking not found: " + parkingId));
+  }
+
+  private ParkingAvailabilitySnapshot simulateEnter(Parking parking) {
+    if (parking.getAvailableSlots() <= 0) {
+      throw new IllegalStateException("Parking has no available slots");
+    }
+
+    ParkingAvailabilitySnapshot snapshot =
+        tryDecreaseSlot(
+            parking.getId(),
+            parking.getAvailableSlots(),
+            ParkingAvailabilityChangeReason.OCCUPANCY_ENTER,
+            exception ->
+                new AvailabilityUnavailableException(
+                    "Parking availability system unavailable", exception));
+    if (snapshot == null) {
+      throw new IllegalStateException("Parking has no available slots");
+    }
+    return snapshot;
+  }
+
+  private ParkingAvailabilitySnapshot simulateExit(Parking parking) {
+    if (parking.getAvailableSlots() >= parking.getTotalSlots()) {
+      throw new IllegalStateException("Parking is already at full availability");
+    }
+
+    Instant updatedAt = Instant.now();
+    if (parkingRepository.incrementAvailableSlotIfBelowCapacity(parking.getId(), updatedAt) == 0) {
+      currentParking(parking.getId());
+      throw new IllegalStateException("Parking is already at full availability");
+    }
+
+    Parking updatedParking = currentParking(parking.getId());
+    ParkingAvailabilityChanged event =
+        toEvent(updatedParking, ParkingAvailabilityChangeReason.OCCUPANCY_EXIT);
+    publishAfterTransaction(event, ignored -> {});
+    return toSnapshot(updatedParking);
+  }
+
+  private ParkingAvailabilitySnapshot tryDecreaseSlot(
+      Long parkingId,
+      int fallbackAvailableSlots,
+      ParkingAvailabilityChangeReason reason,
+      Function<RuntimeException, RuntimeException> unavailableExceptionFactory) {
+    boolean reserved;
+    try {
+      reserved = slotCounterService.tryReserveSlot(parkingId, fallbackAvailableSlots);
+    } catch (RuntimeException exception) {
+      throw unavailableExceptionFactory.apply(exception);
+    }
+    if (!reserved) {
+      return null;
+    }
+
+    Instant updatedAt = Instant.now();
+    try {
+      if (parkingRepository.decrementAvailableSlot(parkingId, updatedAt) == 0) {
+        rollbackReservation(parkingId);
+        parkingRepository.findById(parkingId).ifPresent(this::syncCounter);
+        return null;
+      }
+
+      Parking updatedParking = currentParking(parkingId);
+      ParkingAvailabilityChanged event = toEvent(updatedParking, reason);
+      publishAfterTransaction(
+          event,
+          status -> {
+            if (status != TransactionSynchronization.STATUS_COMMITTED) {
+              rollbackReservation(parkingId);
+            }
+          });
+      return toSnapshot(updatedParking);
+    } catch (RuntimeException exception) {
+      rollbackReservation(parkingId);
+      throw exception;
+    }
   }
 
   private ParkingAvailabilityChanged toEvent(

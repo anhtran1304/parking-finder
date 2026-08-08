@@ -74,6 +74,38 @@ class ParkingRepositoryIntegrationTest {
   }
 
   @Test
+  void incrementAvailableSlotIfBelowCapacity_shouldRejectFullParkingWithoutChangingTimestamp() {
+    Parking parking = parkingRepository.findById(parkingId).orElseThrow();
+    Instant unchangedUpdatedAt = Instant.parse("2026-08-08T10:30:00Z");
+    parking.setAvailableSlots(parking.getTotalSlots());
+    parking.setUpdatedAt(unchangedUpdatedAt);
+    parkingRepository.saveAndFlush(parking);
+
+    int updated =
+        parkingRepository.incrementAvailableSlotIfBelowCapacity(
+            parking.getId(), unchangedUpdatedAt.plusSeconds(10));
+    Parking refreshed = parkingRepository.findById(parking.getId()).orElseThrow();
+
+    assertThat(updated).isZero();
+    assertThat(refreshed.getAvailableSlots()).isEqualTo(refreshed.getTotalSlots());
+    assertThat(refreshed.getUpdatedAt()).isEqualTo(unchangedUpdatedAt);
+  }
+
+  @Test
+  void incrementAvailableSlotIfBelowCapacity_shouldIncrementAvailableSlots() {
+    Parking parking = parkingRepository.findById(parkingId).orElseThrow();
+    Instant updatedAt = Instant.now().plusSeconds(10);
+
+    int updated =
+        parkingRepository.incrementAvailableSlotIfBelowCapacity(parking.getId(), updatedAt);
+    Parking refreshed = parkingRepository.findById(parking.getId()).orElseThrow();
+
+    assertThat(updated).isEqualTo(1);
+    assertThat(refreshed.getAvailableSlots()).isEqualTo(81);
+    assertThat(refreshed.getUpdatedAt()).isEqualTo(updatedAt);
+  }
+
+  @Test
   void decrementAvailableSlot_shouldNeverGoBelowZero() {
     Parking parking = parkingRepository.findById(parkingId).orElseThrow();
     parking.setAvailableSlots(0);

@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler {
         request.getRequestURI());
   }
 
+  @ExceptionHandler(AvailabilityUnavailableException.class)
+  public ResponseEntity<ApiErrorResponse> handleAvailabilityUnavailable(
+      AvailabilityUnavailableException ex, HttpServletRequest request) {
+    return build(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "AVAILABILITY_UNAVAILABLE",
+        ex.getMessage(),
+        request.getRequestURI());
+  }
+
   @ExceptionHandler(DuplicateEmailException.class)
   public ResponseEntity<ApiErrorResponse> handleDuplicateEmail(
       DuplicateEmailException ex, HttpServletRequest request) {
@@ -68,6 +79,16 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiErrorResponse> handleMissingRequestParameter(
       MissingServletRequestParameterException ex, HttpServletRequest request) {
     return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", ex.getMessage(), request.getRequestURI());
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<ApiErrorResponse> handleMessageNotReadable(
+      HttpMessageNotReadableException ex, HttpServletRequest request) {
+    return build(
+        HttpStatus.BAD_REQUEST,
+        "VALIDATION_ERROR",
+        "Malformed request body",
+        request.getRequestURI());
   }
 
   @ExceptionHandler(Exception.class)
