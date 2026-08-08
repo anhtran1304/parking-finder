@@ -1,6 +1,6 @@
 # Parking Finder Roadmap
 
-Last reviewed: 2026-08-07
+Last reviewed: 2026-08-08
 
 Source of truth for detailed task status:
 - .ai/progress.yaml
@@ -49,9 +49,9 @@ Status: in progress
 
 Completed:
 - availability consistency baseline: PostgreSQL bounds, Redis compensation, after-commit absolute events, and fresh REST availability overlays
+- native Spring STOMP endpoint, read-only availability topic, heartbeat scheduler, and server-side publisher
 
 Planned next:
-- websocket setup
 - Redis pub/sub
 - frontend websocket client and live slot updates
 
@@ -66,5 +66,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Implement P4-02: Spring WebSocket/STOMP endpoint, topic, heartbeat, security, and contract tests
+- Implement P4-03: publish committed availability events through Redis and broadcast them through the STOMP publisher
 - Continue one Phase 4 ticket per implementation turn

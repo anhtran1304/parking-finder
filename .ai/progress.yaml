@@ -1,5 +1,5 @@
 version: 3
-last_updated: 2026-08-07
+last_updated: 2026-08-08
 current_phase: phase_4_realtime
 
 phases:
@@ -168,7 +168,8 @@ phases:
         status: done
         note: "PostgreSQL owns bounded availability; Redis reservation is compensated on rollback; after-commit absolute events refresh Redis projections; REST overlays fresh DB availability on cached parking metadata"
       - id: websocket_setup
-        status: pending
+        status: done
+        note: "Native /ws STOMP endpoint with /topic/parking-availability, 10s simple-broker heartbeats, origin allowlist, read-only inbound interceptor, and isolated handshake/payload integration tests"
       - id: redis_pubsub
         status: pending
       - id: simulate_occupancy
