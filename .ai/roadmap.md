@@ -50,9 +50,10 @@ Status: in progress
 Completed:
 - availability consistency baseline: PostgreSQL bounds, Redis compensation, after-commit absolute events, and fresh REST availability overlays
 - native Spring STOMP endpoint, read-only availability topic, heartbeat scheduler, and server-side publisher
+- Redis Pub/Sub bridge from committed availability events to each backend instance's local STOMP clients
 
 Planned next:
-- Redis pub/sub
+- admin occupancy simulator
 - frontend websocket client and live slot updates
 
 ## Phase 5: UX and Integrations
@@ -66,5 +67,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Implement P4-03: publish committed availability events through Redis and broadcast them through the STOMP publisher
+- Implement P4-04: add the admin occupancy simulator through the shared availability service
 - Continue one Phase 4 ticket per implementation turn

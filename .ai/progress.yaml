@@ -162,7 +162,7 @@ phases:
 
   phase_4_realtime:
     status: in_progress
-    note: "Availability consistency baseline complete; WebSocket transport is next"
+    note: "Availability consistency, WebSocket transport, and Redis Pub/Sub bridge complete; admin occupancy simulation is next"
     backend_tasks:
       - id: availability_consistency_baseline
         status: done
@@ -171,7 +171,8 @@ phases:
         status: done
         note: "Native /ws STOMP endpoint with /topic/parking-availability, 10s simple-broker heartbeats, origin allowlist, read-only inbound interceptor, and isolated handshake/payload integration tests"
       - id: redis_pubsub
-        status: pending
+        status: done
+        note: "After-commit availability events publish as JSON to parking.availability.v1; one exact-topic Redis subscriber per backend instance forwards them to the local STOMP broker with failure isolation"
       - id: simulate_occupancy
         status: pending
         note: "Admin endpoint to +1/-1 car for live demo — triggers realtime push"
