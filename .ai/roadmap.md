@@ -1,6 +1,6 @@
 # Parking Finder Roadmap
 
-Last reviewed: 2026-08-08
+Last reviewed: 2026-08-10
 
 Source of truth for detailed task status:
 - .ai/progress.yaml
@@ -52,9 +52,11 @@ Completed:
 - native Spring STOMP endpoint, read-only availability topic, heartbeat scheduler, and server-side publisher
 - Redis Pub/Sub bridge from committed availability events to each backend instance's local STOMP clients
 - ROLE_ADMIN occupancy simulator with guarded ENTER/EXIT updates and realtime event propagation
+- Angular STOMP client with typed availability events, heartbeat, exponential reconnect, runtime validation, and explicit lifecycle management
 
 Planned next:
-- frontend websocket client and live slot updates
+- live slot updates across the map, parking list, detail and active booking banner
+- REST fallback polling while disconnected and an immediate resync after reconnect
 
 ## Phase 5: UX and Integrations
 Status: pending
@@ -67,5 +69,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Implement P4-05: add the Angular STOMP client, reconnect lifecycle, and typed availability stream
+- Implement P4-06: consume realtime availability in the Shell and keep UI state consistent across disconnect/reconnect
 - Continue one Phase 4 ticket per implementation turn
