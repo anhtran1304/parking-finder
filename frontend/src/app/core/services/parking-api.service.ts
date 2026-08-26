@@ -29,6 +29,17 @@ export class ParkingApiService {
     return request$;
   }
 
+  refreshNearby(lat: number, lng: number, radius: number): Observable<NearbyParkingResponse[]> {
+    const key = `${lat.toFixed(4)}:${lng.toFixed(4)}:${Math.round(radius)}`;
+    const params = new HttpParams().set('lat', lat).set('lng', lng).set('radius', radius);
+    const request$ = this.http
+      .get<NearbyParkingResponse[]>(`${this.baseUrl}/parkings/nearby`, { params })
+      .pipe(shareReplay(1));
+
+    this.nearbyCache.set(key, request$);
+    return request$;
+  }
+
   getParkingDetail(parkingId: number, useCache = true): Observable<ParkingDetailResponse> {
     if (useCache) {
       const cached = this.detailCache.get(parkingId);

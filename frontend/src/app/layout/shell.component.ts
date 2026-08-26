@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
-import { catchError, filter, finalize, of } from 'rxjs';
+import { EMPTY, Observable, Subscription, catchError, filter, finalize, of, switchMap, tap, timer } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthSessionService } from '../core/services/auth-session.service';
 import { BookingApiService } from '../core/services/booking-api.service';
+import { ParkingAvailabilityRealtimeService } from '../core/services/parking-availability-realtime.service';
 import { ParkingApiService } from '../core/services/parking-api.service';
 import { AuthOverlayComponent } from '../features/auth/components/auth-overlay/auth-overlay.component';
 import type { AuthOverlayBookingContext, AuthOverlayMode } from '../features/auth/interfaces/auth-overlay.interface';
@@ -15,6 +16,7 @@ import { BookingCenterPanelComponent } from '../features/booking/booking-history
 import { DialogService } from '../shared/ui/dialog/dialog.service';
 import { ReservationDialogComponent, ReservationDialogResult } from '../shared/ui/dialog/reservation-dialog/reservation-dialog.component';
 import { BookingDetailResponse, BookingResponse, CreateBookingRequest, ReservePayload } from '../models/booking.model';
+import { ParkingAvailabilityEvent } from '../models/parking-availability-event.model';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { DetailPanelComponent } from './detail-panel.component';
 import { ProfilePanelComponent } from './profile-panel.component';
@@ -362,8 +364,10 @@ type BookingDetailReturnTarget = 'history' | 'map';
     `,
   ],
 })
-export class ShellComponent implements OnInit {
+export class ShellComponent implements OnInit, OnDestroy {
   private readonly dialogService = inject(DialogService);
+  private readonly subscriptions = new Subscription();
+  private hasConnectedOnce = false;
 
   readonly parkings = signal<NearbyParkingResponse[]>([]);
   readonly selectedParking = signal<NearbyParkingResponse | null>(null);
@@ -464,7 +468,8 @@ export class ShellComponent implements OnInit {
     private readonly router: Router,
     private readonly parkingApiService: ParkingApiService,
     private readonly bookingApiService: BookingApiService,
-    private readonly authSessionService: AuthSessionService
+    private readonly authSessionService: AuthSessionService,
+    private readonly parkingAvailabilityRealtimeService: ParkingAvailabilityRealtimeService
   ) {
     effect(() => {
       const parkingId = this.routeParkingId();
@@ -501,33 +506,47 @@ export class ShellComponent implements OnInit {
 
   ngOnInit(): void {
     const center = environment.defaultMapCenter;
-    this.parkingApiService
-      .getNearby(center.lat, center.lng, environment.defaultRadiusMeters)
-      .pipe(catchError(() => of([])))
-      .subscribe((data) => this.parkings.set(data));
+    this.subscriptions.add(
+      this.parkingApiService
+        .getNearby(center.lat, center.lng, environment.defaultRadiusMeters)
+        .pipe(catchError(() => of([])))
+        .subscribe((data) => this.reconcileNearbyParkings(data))
+    );
 
-    this.route.paramMap.subscribe((params) => {
-      const rawParkingId = params.get('parkingId');
-      if (!rawParkingId) {
-        this.routeParkingId.set(null);
-        return;
-      }
+    this.subscriptions.add(
+      this.route.paramMap.subscribe((params) => {
+        const rawParkingId = params.get('parkingId');
+        if (!rawParkingId) {
+          this.routeParkingId.set(null);
+          return;
+        }
 
-      const parsedId = Number(rawParkingId);
-      this.routeParkingId.set(Number.isFinite(parsedId) ? parsedId : null);
-    });
+        const parsedId = Number(rawParkingId);
+        this.routeParkingId.set(Number.isFinite(parsedId) ? parsedId : null);
+      })
+    );
 
-    this.route.queryParamMap.subscribe((params) => {
-      const mode = params.get('auth');
-      this.authMode.set(mode === 'sign-in' || mode === 'sign-up' ? mode : null);
-    });
+    this.subscriptions.add(
+      this.route.queryParamMap.subscribe((params) => {
+        const mode = params.get('auth');
+        this.authMode.set(mode === 'sign-in' || mode === 'sign-up' ? mode : null);
+      })
+    );
 
-    this.router.events
-      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
-      .subscribe(() => this.syncRouteState());
+    this.subscriptions.add(
+      this.router.events
+        .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+        .subscribe(() => this.syncRouteState())
+    );
 
     this.syncRouteState();
     this.loadActiveBooking();
+    this.startAvailabilitySynchronization();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+    void this.parkingAvailabilityRealtimeService.disconnect().catch(() => undefined);
   }
 
   onParkingSelected(parking: NearbyParkingResponse): void {
@@ -865,7 +884,7 @@ export class ShellComponent implements OnInit {
         }
 
         const durationLabel = this.bookingDurationLabel();
-        this.applyBookedSlot(response.parkingId);
+        this.refreshNearbyAvailability();
         this.parkingApiService.evictParkingDetail(response.parkingId);
         this.bookingDraft.set(null);
         this.bookingFeedback.set({
@@ -1014,52 +1033,6 @@ export class ShellComponent implements OnInit {
     };
   }
 
-  private applyBookedSlot(parkingId: number): void {
-    let updatedSelection: NearbyParkingResponse | null = null;
-
-    const updated = this.parkings().map((parking) => {
-      if (parking.id !== parkingId) {
-        return parking;
-      }
-
-      const next = {
-        ...parking,
-        availableSlots: Math.max(parking.availableSlots - 1, 0),
-        updatedAt: new Date().toISOString(),
-      };
-      updatedSelection = next;
-      return next;
-    });
-
-    this.parkings.set(updated);
-    if (updatedSelection) {
-      this.selectedParking.set(updatedSelection);
-    }
-  }
-
-  private applyReleasedSlot(parkingId: number): void {
-    let updatedSelection: NearbyParkingResponse | null = null;
-
-    const updated = this.parkings().map((parking) => {
-      if (parking.id !== parkingId) {
-        return parking;
-      }
-
-      const next = {
-        ...parking,
-        availableSlots: Math.min(parking.availableSlots + 1, parking.totalSlots),
-        updatedAt: new Date().toISOString(),
-      };
-      updatedSelection = next;
-      return next;
-    });
-
-    this.parkings.set(updated);
-    if (updatedSelection && this.selectedParking()?.id === parkingId) {
-      this.selectedParking.set(updatedSelection);
-    }
-  }
-
   private cancelBooking(booking: BookingDetailResponse): void {
     if (this.cancelInFlight()) {
       return;
@@ -1085,7 +1058,7 @@ export class ShellComponent implements OnInit {
           return;
         }
 
-        this.applyReleasedSlot(response.parkingId);
+        this.refreshNearbyAvailability();
         this.parkingApiService.evictParkingDetail(response.parkingId);
         if (this.activeBooking()?.id === response.id) {
           this.activeBooking.set(null);
@@ -1101,6 +1074,106 @@ export class ShellComponent implements OnInit {
 
   private findParkingById(parkingId: number): NearbyParkingResponse | null {
     return this.parkings().find((parking) => parking.id === parkingId) ?? null;
+  }
+
+  private startAvailabilitySynchronization(): void {
+    this.subscriptions.add(
+      this.parkingAvailabilityRealtimeService.availabilityEvents$.subscribe((event) =>
+        this.applyAvailabilityEvent(event)
+      )
+    );
+
+    this.subscriptions.add(
+      this.parkingAvailabilityRealtimeService.connectionState$
+        .pipe(
+          tap((state) => {
+            if (state !== 'connected') {
+              return;
+            }
+
+            if (this.hasConnectedOnce) {
+              this.refreshNearbyAvailability();
+            }
+            this.hasConnectedOnce = true;
+          }),
+          switchMap((state) =>
+            state === 'connected'
+              ? EMPTY
+              : timer(environment.pollingIntervalMs, environment.pollingIntervalMs).pipe(
+                  switchMap(() => this.loadFreshNearbyParkings())
+                )
+          )
+        )
+        .subscribe((parkings) => this.reconcileNearbyParkings(parkings))
+    );
+
+    this.parkingAvailabilityRealtimeService.connect();
+  }
+
+  private loadFreshNearbyParkings(): Observable<NearbyParkingResponse[]> {
+    const center = environment.defaultMapCenter;
+    return this.parkingApiService
+      .refreshNearby(center.lat, center.lng, environment.defaultRadiusMeters)
+      .pipe(catchError(() => EMPTY));
+  }
+
+  private refreshNearbyAvailability(): void {
+    this.subscriptions.add(
+      this.loadFreshNearbyParkings().subscribe((parkings) => this.reconcileNearbyParkings(parkings))
+    );
+  }
+
+  private applyAvailabilityEvent(event: ParkingAvailabilityEvent): void {
+    let changed = false;
+    const updated = this.parkings().map((parking) => {
+      if (parking.id !== event.parkingId || this.isOlder(event.updatedAt, parking.updatedAt)) {
+        return parking;
+      }
+
+      if (
+        parking.availableSlots === event.availableSlots
+        && parking.totalSlots === event.totalSlots
+        && parking.updatedAt === event.updatedAt
+      ) {
+        return parking;
+      }
+
+      changed = true;
+      return {
+        ...parking,
+        availableSlots: event.availableSlots,
+        totalSlots: event.totalSlots,
+        updatedAt: event.updatedAt,
+      };
+    });
+
+    if (changed) {
+      this.parkings.set(updated);
+      this.parkingApiService.evictParkingDetail(event.parkingId);
+    }
+  }
+
+  private reconcileNearbyParkings(incoming: NearbyParkingResponse[]): void {
+    const currentById = new Map(this.parkings().map((parking) => [parking.id, parking]));
+    const reconciled = incoming.map((parking) => {
+      const current = currentById.get(parking.id);
+      if (!current || !this.isOlder(parking.updatedAt, current.updatedAt)) {
+        return parking;
+      }
+
+      return {
+        ...parking,
+        availableSlots: current.availableSlots,
+        totalSlots: current.totalSlots,
+        updatedAt: current.updatedAt,
+      };
+    });
+
+    this.parkings.set(reconciled);
+  }
+
+  private isOlder(incomingTimestamp: string, currentTimestamp: string): boolean {
+    return Date.parse(incomingTimestamp) < Date.parse(currentTimestamp);
   }
 
   private bookingErrorMessage(error: HttpErrorResponse): string {

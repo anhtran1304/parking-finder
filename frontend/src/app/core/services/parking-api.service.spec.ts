@@ -31,4 +31,21 @@ describe('ParkingApiService', () => {
 
     expect(firstResult).toEqual(secondResult);
   });
+
+  it('should bypass and replace the nearby cache when refreshing', () => {
+    const initial = [{ id: 1, name: 'A', availableSlots: 5 }];
+    const refreshed = [{ id: 1, name: 'A', availableSlots: 4 }];
+    let cachedResult: unknown;
+
+    service.getNearby(10.7, 106.7, 1000).subscribe();
+    httpMock.expectOne((request) => request.url.endsWith('/parkings/nearby')).flush(initial);
+
+    service.refreshNearby(10.7, 106.7, 1000).subscribe();
+    httpMock.expectOne((request) => request.url.endsWith('/parkings/nearby')).flush(refreshed);
+
+    service.getNearby(10.7, 106.7, 1000).subscribe((result) => (cachedResult = result));
+
+    expect(cachedResult).toEqual(refreshed);
+    httpMock.expectNone((request) => request.url.endsWith('/parkings/nearby'));
+  });
 });

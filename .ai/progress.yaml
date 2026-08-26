@@ -1,5 +1,5 @@
 version: 3
-last_updated: 2026-08-10
+last_updated: 2026-08-26
 current_phase: phase_4_realtime
 
 phases:
@@ -162,7 +162,7 @@ phases:
 
   phase_4_realtime:
     status: in_progress
-    note: "Backend realtime path, admin simulator, and Angular STOMP transport client complete; live UI synchronization is next"
+    note: "Realtime availability now reaches the Angular map shell with timestamp ordering, fallback polling, and reconnect resync; availability-age UI and closeout remain"
     backend_tasks:
       - id: availability_consistency_baseline
         status: done
@@ -183,7 +183,8 @@ phases:
         status: done
         note: "Singleton native STOMP client exposes validated typed availability events and connection state, with 10s heartbeats, exponential reconnect, idempotent lifecycle, and duplicate-subscription protection"
       - id: realtime_slot_update_ui
-        status: pending
+        status: done
+        note: "Shell consumes absolute STOMP events across map/list/detail state, ignores stale updates, polls REST while unavailable, resyncs after reconnect, and uses authoritative refreshes after booking/cancellation"
       - id: availability_timestamp
         status: pending
         note: "Show 'Updated Xs ago' on parking cards for trust signal"
