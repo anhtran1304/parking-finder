@@ -162,7 +162,7 @@ phases:
 
   phase_4_realtime:
     status: in_progress
-    note: "Realtime availability now reaches the Angular map shell with timestamp ordering, fallback polling, and reconnect resync; availability-age UI and closeout remain"
+    note: "Realtime availability reaches the Angular map shell with recovery safeguards and parking-card freshness labels; Phase 4 closeout remains"
     backend_tasks:
       - id: availability_consistency_baseline
         status: done
@@ -186,8 +186,8 @@ phases:
         status: done
         note: "Shell consumes absolute STOMP events across map/list/detail state, ignores stale updates, polls REST while unavailable, resyncs after reconnect, and uses authoritative refreshes after booking/cancellation"
       - id: availability_timestamp
-        status: pending
-        note: "Show 'Updated Xs ago' on parking cards for trust signal"
+        status: done
+        note: "Parking cards show accessible relative freshness from updatedAt using one sidebar-owned one-second clock, with clock-skew clamping and invalid-timestamp fallback"
 
   phase_5_ux_and_integrations:
     status: pending

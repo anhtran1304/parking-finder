@@ -27,9 +27,16 @@ export type ParkingAvailability = 'available' | 'limited' | 'full';
         <span class="card__price">\${{ price }}/hr</span>
       </div>
 
-      <div class="card__status" [ngClass]="'card__status--' + availability">
-        <span class="card__dot"></span>
-        <span class="card__status-text">{{ statusLabel }}</span>
+      <div class="card__status-row">
+        <div class="card__status" [ngClass]="'card__status--' + availability">
+          <span class="card__dot"></span>
+          <span class="card__status-text">{{ statusLabel }}</span>
+        </div>
+        <span
+          class="card__freshness"
+          [attr.title]="freshnessTitle"
+          [attr.aria-label]="freshnessTitle"
+        >{{ freshnessLabel }}</span>
       </div>
     </article>
   `,
@@ -94,11 +101,19 @@ export type ParkingAvailability = 'available' | 'limited' | 'full';
         color: var(--color-primary-base);
       }
 
-      .card__status {
+      .card__status-row {
         display: flex;
         align-items: center;
-        gap: 6px;
+        justify-content: space-between;
+        gap: var(--spacing-sm);
         margin-top: var(--spacing-sm);
+      }
+
+      .card__status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
       }
 
       .card__dot {
@@ -111,6 +126,14 @@ export type ParkingAvailability = 'available' | 'limited' | 'full';
       .card__status-text {
         font-size: var(--font-size-xs);
         font-weight: var(--font-weight-medium);
+      }
+
+      .card__freshness {
+        flex-shrink: 0;
+        color: var(--color-text-tertiary);
+        font-size: 10px;
+        font-weight: var(--font-weight-medium);
+        white-space: nowrap;
       }
 
       .card__status--available .card__dot {
@@ -144,6 +167,8 @@ export class ParkingCardComponent {
   @Input() price = '0';
   @Input() availableSlots = 0;
   @Input() totalSlots = 0;
+  @Input({ required: true }) updatedAt = '';
+  @Input({ required: true }) nowMs = Date.now();
   @Input() selected = false;
   @Input() hovered = false;
   @Output() cardSelected = new EventEmitter<void>();
@@ -160,5 +185,40 @@ export class ParkingCardComponent {
     if (this.availableSlots <= 0) return '0 spots \u2014 full';
     if (this.availableSlots <= 5) return `${this.availableSlots} spots left`;
     return `${this.availableSlots} spots available`;
+  }
+
+  get freshnessLabel(): string {
+    const updatedAtMs = Date.parse(this.updatedAt);
+    if (Number.isNaN(updatedAtMs)) {
+      return 'Update time unavailable';
+    }
+
+    const ageSeconds = Math.max(0, Math.floor((this.nowMs - updatedAtMs) / 1000));
+    if (ageSeconds < 5) {
+      return 'Updated just now';
+    }
+    if (ageSeconds < 60) {
+      return `Updated ${ageSeconds}s ago`;
+    }
+
+    const ageMinutes = Math.floor(ageSeconds / 60);
+    if (ageMinutes < 60) {
+      return `Updated ${ageMinutes}m ago`;
+    }
+
+    const ageHours = Math.floor(ageMinutes / 60);
+    if (ageHours < 24) {
+      return `Updated ${ageHours}h ago`;
+    }
+
+    return `Updated ${Math.floor(ageHours / 24)}d ago`;
+  }
+
+  get freshnessTitle(): string {
+    const updatedAtMs = Date.parse(this.updatedAt);
+    if (Number.isNaN(updatedAtMs)) {
+      return 'Availability update time unavailable';
+    }
+    return `Last updated ${new Date(updatedAtMs).toLocaleString()}`;
   }
 }

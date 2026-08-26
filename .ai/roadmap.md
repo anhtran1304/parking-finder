@@ -54,9 +54,9 @@ Completed:
 - ROLE_ADMIN occupancy simulator with guarded ENTER/EXIT updates and realtime event propagation
 - Angular STOMP client with typed availability events, heartbeat, exponential reconnect, runtime validation, and explicit lifecycle management
 - live map-shell synchronization with timestamp ordering, REST fallback polling, reconnect resync, and authoritative booking/cancellation refreshes
+- parking-card availability freshness labels driven by one shared sidebar clock
 
 Planned next:
-- visible relative availability timestamps on parking cards
 - Phase 4 closeout and end-to-end realtime demo verification
 
 ## Phase 5: UX and Integrations
@@ -70,5 +70,5 @@ Planned:
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Implement the availability timestamp trust signal, then close out Phase 4
+- Close out Phase 4 with end-to-end realtime demo verification and documentation sync
 - Continue one Phase 4 ticket per implementation turn

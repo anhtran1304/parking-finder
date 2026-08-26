@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, signal } from '@angular/core';
 import { NearbyParkingResponse } from '../models/parking.model';
 import { ParkingFilter } from './shell.component';
 import { ChipComponent } from '../shared/components/chip.component';
@@ -60,6 +60,8 @@ import { SearchBarComponent } from '../shared/components/search-bar.component';
           [price]="(item.hourlyRate || 2).toString()"
           [availableSlots]="item.availableSlots"
           [totalSlots]="item.totalSlots || 0"
+          [updatedAt]="item.updatedAt"
+          [nowMs]="nowMs()"
           [selected]="selectedId === item.id"
           [hovered]="hoveredId === item.id"
           (cardSelected)="parkingSelected.emit(item)"
@@ -195,7 +197,7 @@ import { SearchBarComponent } from '../shared/components/search-bar.component';
     `,
   ],
 })
-export class SidebarComponent {
+export class SidebarComponent implements OnInit, OnDestroy {
   @Input() parkings: NearbyParkingResponse[] = [];
   @Input() selectedId: number | null = null;
   @Input() hoveredId: number | null = null;
@@ -205,6 +207,21 @@ export class SidebarComponent {
   @Output() parkingLeft = new EventEmitter<void>();
   @Output() searchChange = new EventEmitter<string>();
   @Output() filterToggled = new EventEmitter<ParkingFilter>();
+
+  readonly nowMs = signal(Date.now());
+  private freshnessTimerId: ReturnType<typeof setInterval> | null = null;
+
+  ngOnInit(): void {
+    this.nowMs.set(Date.now());
+    this.freshnessTimerId = setInterval(() => this.nowMs.set(Date.now()), 1000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.freshnessTimerId !== null) {
+      clearInterval(this.freshnessTimerId);
+      this.freshnessTimerId = null;
+    }
+  }
 
   isFilterActive(filter: ParkingFilter): boolean {
     return this.activeFilters.includes(filter);
