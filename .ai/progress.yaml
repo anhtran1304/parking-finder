@@ -1,6 +1,6 @@
 version: 3
 last_updated: 2026-08-26
-current_phase: phase_4_realtime
+current_phase: phase_5_ux_and_integrations
 
 phases:
   phase_1_core_search:
@@ -161,8 +161,8 @@ phases:
         note: "Frontend cancel action uses a destructive confirmation dialog, calls the ownership-scoped cancel API, prevents duplicate requests, refreshes local availability and booking state, and surfaces status-specific errors"
 
   phase_4_realtime:
-    status: in_progress
-    note: "Realtime availability reaches the Angular map shell with recovery safeguards and parking-card freshness labels; Phase 4 closeout remains"
+    status: done
+    note: "Realtime availability is complete from committed PostgreSQL change through Redis Pub/Sub and STOMP to the Angular UI, with REST recovery and freshness labels"
     backend_tasks:
       - id: availability_consistency_baseline
         status: done
@@ -177,7 +177,8 @@ phases:
         status: done
         note: "ROLE_ADMIN-protected ENTER/EXIT endpoint applies guarded PostgreSQL availability updates, Redis admission/compensation, and after-commit OCCUPANCY events"
       - id: phase_4_closeout
-        status: pending
+        status: done
+        note: "Docker-backed PostGIS/Redis integration test proves authenticated occupancy ENTER/EXIT through native STOMP, with a repeatable browser demo runbook and synchronized architecture documentation"
     frontend_tasks:
       - id: websocket_client
         status: done
@@ -190,7 +191,8 @@ phases:
         note: "Parking cards show accessible relative freshness from updatedAt using one sidebar-owned one-second clock, with clock-skew clamping and invalid-timestamp fallback"
 
   phase_5_ux_and_integrations:
-    status: pending
+    status: in_progress
+    note: "Phase 5 begins with cache optimization while preserving PostgreSQL as the availability authority"
     backend_tasks:
       - id: cache_optimization
         status: pending

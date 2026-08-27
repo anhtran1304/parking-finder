@@ -38,14 +38,13 @@ This project is built as a **system design showcase**, focusing on:
 ## 🏗️ Architecture Overview
 
 ```text
-[Frontend - Angular]
-        ↓
-[Backend - Spring Boot]
-        ↓
- ┌───────────────┬───────────────┐
- │               │               │
-[PostgreSQL + PostGIS]     [Redis]
-   (source of truth)     (cache + atomic ops)
+[Angular SPA]
+   │ REST + JWT
+   │ WebSocket / STOMP
+   ▼
+[Spring Boot]
+   ├── PostgreSQL + PostGIS (source of truth)
+   └── Redis (cache, atomic admission, Pub/Sub)
 ```
 
 ---
@@ -58,7 +57,7 @@ This project is built as a **system design showcase**, focusing on:
 | Backend  | Spring Boot (Java)   |
 | Database | PostgreSQL + PostGIS |
 | Cache    | Redis                |
-| Realtime | WebSocket (planned)  |
+| Realtime | WebSocket + STOMP, Redis Pub/Sub |
 | DevOps   | Docker               |
 
 ---
@@ -142,6 +141,13 @@ ng serve
 * Prevents overselling using atomic operations
 * Handles race conditions
 
+### 📡 Realtime Availability
+
+* Committed PostgreSQL changes fan out through Redis Pub/Sub and STOMP
+* Absolute availability events update the map, list, filters, and detail panel
+* REST polling and reconnect resynchronization recover missed Pub/Sub messages
+* Parking cards expose relative freshness timestamps
+
 ---
 
 ## ⚙️ Engineering Highlights
@@ -150,7 +156,7 @@ ng serve
 
 * Cache-aside pattern
 * TTL-based invalidation
-* Trade-off: potential stale data
+* Static parking metadata may be cached while REST overlays fresh database availability
 
 ---
 
@@ -186,7 +192,6 @@ Solution:
 
 ## 🧩 Future Improvements
 
-* WebSocket for real-time updates
 * Smart parking recommendation (AI)
 * Payment integration
 

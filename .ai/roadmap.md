@@ -45,7 +45,7 @@ Frontend highlights:
 - Destructive cancel confirmation wired to the backend with local booking/availability synchronization
 
 ## Phase 4: Realtime
-Status: in progress
+Status: done
 
 Completed:
 - availability consistency baseline: PostgreSQL bounds, Redis compensation, after-commit absolute events, and fresh REST availability overlays
@@ -55,20 +55,19 @@ Completed:
 - Angular STOMP client with typed availability events, heartbeat, exponential reconnect, runtime validation, and explicit lifecycle management
 - live map-shell synchronization with timestamp ordering, REST fallback polling, reconnect resync, and authoritative booking/cancellation refreshes
 - parking-card availability freshness labels driven by one shared sidebar clock
-
-Planned next:
-- Phase 4 closeout and end-to-end realtime demo verification
+- Docker-backed end-to-end proof of authenticated occupancy requests through PostgreSQL commit, Redis Pub/Sub, STOMP, and a native WebSocket client
+- repeatable browser demo runbook plus synchronized realtime, recovery, and Redis architecture documentation
 
 ## Phase 5: UX and Integrations
-Status: pending
+Status: in progress
 
 Planned:
-- cache optimization
+- P5-01 cache optimization
 - error contract hardening
 - geolocation and directions deep-link
 - filter chips and active booking banner
 - OAuth2 (Google) after core auth flow is stable
 
 ## Current Next Step
-- Close out Phase 4 with end-to-end realtime demo verification and documentation sync
-- Continue one Phase 4 ticket per implementation turn
+- Implement P5-01 cache optimization without weakening PostgreSQL's authority over availability
+- Continue one Phase 5 ticket per implementation turn

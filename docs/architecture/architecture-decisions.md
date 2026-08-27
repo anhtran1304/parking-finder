@@ -268,7 +268,8 @@ Authentication is implemented before WebSocket realtime features.
 
 ## Why
 
-Realtime connections require user identity.
+The authenticated booking journey and ownership model needed to be stable before realtime could
+publish changes caused by user actions.
 
 Features such as:
 
@@ -276,7 +277,8 @@ Features such as:
 * active booking
 * personalized updates
 
-depend on authenticated users.
+depend on authenticated users. The implemented availability topic itself is public and read-only;
+the occupancy simulator that produces demo events is restricted to `ROLE_ADMIN`.
 
 ---
 

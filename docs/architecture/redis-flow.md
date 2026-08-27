@@ -1,71 +1,84 @@
 # Redis Flow
 
-Redis serves two distinct roles in Parking Finder.
-
-Redis is **never** the source of truth. PostgreSQL is.
+Redis serves four supporting roles in Parking Finder. PostgreSQL remains the durable source of
+truth for every business-critical value.
 
 ---
 
-## Role 1: Cache-Aside for Parking Search
+## Role 1: Static Metadata Cache
 
-Reduces database load for the most frequent read path: nearby parking queries.
+Nearby and detail responses use cache-aside storage to reduce repeated metadata work.
 
 ```mermaid
-flowchart TD
-    A[GET /parking/nearby lat,lng,radius] --> B{Redis cache hit?}
-    B -->|Hit| C[Return cached result]
-    B -->|Miss| D[PostGIS ST_DWithin query on PostgreSQL]
-    D --> E[Write result to Redis with TTL]
-    E --> F[Return result to client]
+flowchart LR
+    A[Parking REST request] --> B{Redis metadata hit?}
+    B -->|No| C[PostGIS / PostgreSQL metadata query]
+    C --> D[Cache metadata with TTL]
+    B -->|Yes| E[Cached metadata]
+    D --> F[Overlay current DB availability]
+    E --> F
+    F --> G[Return response]
 ```
 
-**Trade-off accepted:** Cache may return slightly stale slot counts.
-Acceptable because parking search is a discovery flow, not a reservation commitment.
+Availability is not trusted from the metadata cache. Every REST response overlays a small current
+PostgreSQL projection containing parking ID, available slots, total slots, and `updatedAt`.
 
 ---
 
-## Role 2: Atomic Slot Reservation for Booking
+## Role 2: Atomic Booking and ENTER Admission
 
-Prevents overselling when multiple users try to book the last available slot simultaneously.
+A Lua script serializes competing reservations before PostgreSQL applies its final guarded update.
+
+```text
+GET parking:{id}:slots
+  → initialize from DB-derived fallback if missing
+  → if value <= 0, reject
+  → otherwise DECR atomically
+```
+
+PostgreSQL still enforces `0 <= available_slots <= total_slots`. If its transaction rejects or
+rolls back, the Redis reservation is compensated. This makes Redis a fast admission gate, not the
+authority.
+
+---
+
+## Role 3: Absolute Availability Projections
+
+After a committed change, the projection updater writes:
+
+| Key | Value |
+|-----|-------|
+| `parking:{id}:slots` | Absolute available-slot counter |
+| `parking:{id}:availability` | JSON snapshot with slots, capacity, and timestamp |
+
+It also evicts `parking:detail:{id}`. Absolute values are safe to apply more than once and recover
+counter drift caused by an earlier partial failure.
+
+---
+
+## Role 4: Cross-Instance Pub/Sub
 
 ```mermaid
-flowchart TD
-    A[POST /bookings] --> B[Validate parking + window — PostgreSQL]
-    B --> C[Redis Lua script:
-IF slots > 0 THEN DECR slots
-RETURN 1 ELSE RETURN 0 END]
-    C -->|returned 1 — slot secured| D[INSERT booking in PostgreSQL]
-    D -->|write success| E[201 Booking confirmed]
-    D -->|write failure| F[INCR slots — rollback
-500 error]
-    C -->|returned 0 — no slots| G[409 No available slots]
+flowchart LR
+    A[Committed availability event] --> B[Publish parking.availability.v1]
+    B --> C1[Backend instance A subscriber]
+    B --> C2[Backend instance B subscriber]
+    C1 --> D1[Local STOMP sessions]
+    C2 --> D2[Local STOMP sessions]
 ```
 
-### Why a Lua Script?
-
-Redis commands are single-threaded. A Lua script runs atomically — no other command can execute between the check and the decrement.
-
-Without atomicity:
-
-```
-User A: GET slots → 1
-User B: GET slots → 1
-User A: DECR slots → 0  ✓
-User B: DECR slots → -1 ✗  (oversold)
-```
-
-With Lua script — this race condition is impossible.
+The publishing instance consumes its own Redis message, so every browser uses the same
+subscriber-to-STOMP path. Pub/Sub is non-durable: disconnected subscribers receive no replay.
+Angular recovers through REST polling while realtime is unavailable and an immediate REST resync
+after reconnect.
 
 ---
 
-## Slot Counter Lifecycle
+## Failure Boundaries
 
-Slot counters are seeded from PostgreSQL on startup and updated by:
-
-| Event | Redis Operation |
-|-------|----------------|
-| Booking created | `DECR parking:{id}:slots` |
-| Booking cancelled | `INCR parking:{id}:slots` |
-| Booking completed | `INCR parking:{id}:slots` |
-| Booking expired | `INCR parking:{id}:slots` |
-| DB write failure | `INCR parking:{id}:slots` (rollback) |
+- Redis admission failure fails booking or `ENTER` closed with HTTP 503.
+- PostgreSQL rejection compensates the Redis reservation.
+- Redis projection or Pub/Sub failure occurs after commit, is logged, and cannot roll back the
+  durable database change.
+- A stale or duplicate browser event cannot reduce correctness because events are absolute and the
+  client rejects older `updatedAt` values.

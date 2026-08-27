@@ -8,90 +8,112 @@ High-level view of Parking Finder's components, data flows, and security model.
 
 | Layer | Technology | Role |
 |-------|-----------|------|
-| Frontend | Angular SPA | Map-first UI, booking and auth flows |
-| Backend | Spring Boot (monolith) | REST API, business logic, scheduled jobs |
-| Database | PostgreSQL + PostGIS | Source of truth for all business data |
-| Cache / Counters | Redis | Parking search cache, atomic slot reservation |
+| Frontend | Angular SPA, Leaflet, STOMP.js | Map-first UI, booking/auth flows, realtime state and recovery |
+| Backend | Spring Boot modular monolith | REST API, transactions, scheduled jobs, WebSocket/STOMP fan-out |
+| Database | PostgreSQL + PostGIS | Durable source of truth and geospatial search |
+| Redis | Counters, projections, cache, Pub/Sub | Atomic admission, fast reads, and cross-instance realtime distribution |
 
 ---
 
 ## Architecture Diagram
 
 ```mermaid
-graph TD
-    A[Angular SPA<br/>Map · Booking · Auth] -->|HTTP REST + JWT| B[Spring Boot<br/>Monolith]
-    B -->|JPA| C[(PostgreSQL<br/>+ PostGIS)]
-    B -->|Lettuce| D[(Redis)]
-    C -->|ST_DWithin<br/>nearby search| B
-    D -->|Cache-aside<br/>Atomic counters| B
-    E[Docker Compose] -.->|runs| B
-    E -.->|runs| C
-    E -.->|runs| D
+flowchart LR
+    A[Angular SPA<br/>Map · Booking · Auth] -->|REST + JWT| B[Spring Boot<br/>Modular monolith]
+    A <-->|WebSocket / STOMP<br/>read-only availability topic| B
+    B -->|JPA + guarded updates| C[(PostgreSQL<br/>+ PostGIS)]
+    B <-->|cache · counters · Pub/Sub| D[(Redis)]
+    C -->|ST_DWithin + availability projections| B
 ```
+
+PostgreSQL owns parking and booking state. Redis accelerates access and distribution but is never
+authoritative.
 
 ---
 
 ## Backend Modules
 
 ### Parking
+
 - Nearby search via PostGIS `ST_DWithin`
-- Parking detail with amenity flags and slot count
+- Cached static metadata with fresh PostgreSQL availability overlays
+- Parking detail with amenity flags and absolute slot counts
 
 ### Booking
-- Create booking — Redis atomic decrement → PostgreSQL insert
-- Booking history (paginated, filterable by status)
-- Active booking (`GET /bookings/active`)
-- Booking detail scoped to authenticated user (`GET /bookings/{id}`)
-- Cancel booking (`PATCH /bookings/{id}/cancel`)
+
+- Create booking — Redis atomic admission → guarded PostgreSQL decrement → booking insert
+- Booking history, active booking, and ownership-scoped detail/cancellation APIs
 - Lifecycle scheduler — transitions PENDING → ACTIVE → COMPLETED/EXPIRED every 60 seconds
+- Redis reservation compensation when the database transaction fails
 
-### Auth
-- Register / Login / Refresh / Logout
-- JWT access token (short-lived, Bearer header)
-- Refresh token (HttpOnly cookie, hashed and persisted in DB for revocation)
+### Realtime Availability
 
-### User
-- Current user profile (`GET /users/me`)
+- Committed absolute `ParkingAvailabilityChanged` events
+- Redis Pub/Sub channel `parking.availability.v1` for cross-instance fan-out
+- Native `/ws` endpoint and public read-only `/topic/parking-availability` STOMP topic
+- Admin-protected occupancy simulator for controlled `ENTER` and `EXIT` demo events
+- Browser heartbeat, exponential reconnect, REST fallback polling, and reconnect resync
+
+### Auth and User
+
+- Register, login, refresh, logout, and current-user profile
+- Short-lived JWT access token and persisted, revocable refresh token
+- Admin simulator protected by JWT role; availability subscription remains public and read-only
 
 ---
 
 ## Security Model
 
-Stateless Spring Security filter chain.
+Protected REST flow:
 
-Protected endpoint request flow:
-
-```
+```text
 Client
   → Authorization: Bearer <access_token>
-  → JwtAuthFilter validates token
-  → SecurityContext populated with principal
-  → Controller scopes data to userId from JWT
+  → JwtAuthFilter validates token and role claim
+  → SecurityContext receives the principal
+  → Controller/service applies ownership or role rules
 ```
+
+WebSocket availability flow:
+
+- The HTTP Origin must match the configured CORS allowlist.
+- `CONNECT`, lifecycle frames, and the exact public subscription are allowed.
+- Client `SEND`, wildcard subscriptions, and other destinations are rejected.
 
 ---
 
 ## Core Data Flows
 
 ### Nearby Parking
-1. Client requests `/parking/nearby`
-2. Check Redis cache by location key
-3. Cache miss → PostGIS `ST_DWithin` query
-4. Cache result with TTL
-5. Return to client
 
-### Booking Creation
-1. Authenticated user posts booking request
-2. Validate parking exists and booking window is valid
-3. Redis Lua script: decrement slot counter atomically
-4. If slot secured → insert booking in PostgreSQL
-5. If DB write fails → roll back Redis decrement (INCR restore)
+1. Angular requests `GET /parkings/nearby`.
+2. Spring loads cached or database-backed parking metadata.
+3. PostgreSQL supplies a batched current-availability projection.
+4. The service overlays absolute slots and timestamps before responding.
+5. Angular reconciles the response by `updatedAt` so an older request cannot replace a newer event.
 
-### Booking Lifecycle
+### Booking or Occupancy Change
+
+```text
+Redis admission when required
+  → guarded PostgreSQL update inside transaction
+  → COMMIT
+  → absolute application event
+     ├─ synchronize Redis counter/snapshot and evict detail cache
+     └─ publish Redis channel
+         → subscriber on every backend instance
+         → local STOMP broker
+         → connected Angular clients
 ```
-PENDING → ACTIVE     (start_time reached)
-ACTIVE  → COMPLETED  (end_time passed)
-PENDING → EXPIRED    (window passed unused)
-ACTIVE  → CANCELLED  (user cancels)
+
+### Browser Recovery
+
+```text
+Connected       → apply validated absolute STOMP events
+Unavailable     → poll authoritative nearby REST every 10 seconds
+Reconnected     → immediate REST resync, then stop polling
+Any input       → ignore values older than current updatedAt
 ```
-Terminal states (COMPLETED, CANCELLED, EXPIRED) release the Redis slot counter.
+
+Redis Pub/Sub has no replay. REST recovery is therefore part of the correctness model rather than
+only a performance fallback.
